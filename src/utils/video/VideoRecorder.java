@@ -1,18 +1,27 @@
-package com.tests;
+package com.framework.utils;
 
-import com.framework.utils.VideoRecorder;
-import org.junit.jupiter.api.Test;
+import org.jcodec.api.awt.SequenceEncoder;
 
-import java.util.Arrays;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.nio.file.Paths;
+import java.util.List;
+import javax.imageio.ImageIO;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+public class VideoRecorder {
 
-public class VideoRecorderTest {
-    @Test
-    public void testVideoGeneration() {
-        assertDoesNotThrow(() -> VideoRecorder.createVideoFromImages(
-                Arrays.asList("screenshots/test_1.png", "screenshots/test_2.png"),
-                "videos/test_output.mp4"
-        ));
+    public static void createVideoFromImages(List<String> imagePaths, String outputVideoPath) throws Exception {
+        File outputFile = new File(outputVideoPath);
+        SequenceEncoder encoder = new SequenceEncoder(outputFile);
+
+        for (String imagePath : imagePaths) {
+            File imgFile = new File(imagePath);
+            if (imgFile.exists()) {
+                BufferedImage image = ImageIO.read(imgFile);
+                encoder.encodeImage(image);
+            }
+        }
+
+        encoder.finish();
     }
 }
