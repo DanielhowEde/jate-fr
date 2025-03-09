@@ -92,9 +92,6 @@ enableExtentReports=true
 3️⃣ Secure Credentials Using Java KeyStore (JKS)
 To store credentials securely, use:
 
-sh
-Copy
-Edit
 keytool -genseckey -keystore src/test/resources/db-credentials.jks -storepass changeit -storetype JCEKS \
 -alias dbUsername -keyalg AES -keysize 128 -keypass changeit
 
@@ -102,19 +99,13 @@ keytool -genseckey -keystore src/test/resources/db-credentials.jks -storepass ch
 -alias dbPassword -keyalg AES -keysize 128 -keypass changeit
 🚀 Running Tests
 Run All Tests
-sh
-Copy
-Edit
+
 mvn test
 Run Tests in Headless Mode
-sh
-Copy
-Edit
+
 mvn test -Dheadless=true
 Run a Specific Test Suite
-sh
-Copy
-Edit
+
 mvn test -Dtest=DatabaseTest
 Generate Extent Reports
 Reports are saved in the reports/ directory.
@@ -128,4 +119,3 @@ Open reports/ExtentReport_<timestamp>.html in a browser.
 ✅ ExtentReports for Test Reporting
 ✅ Automatic Test Discovery (-tests Repos)
 ✅ Video Recording of Tests
-
