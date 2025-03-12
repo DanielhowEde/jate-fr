@@ -1,7 +1,7 @@
-package com.tests;
+package test;
 
-import com.framework.base.BasePage;
-import com.framework.base.WebDriverManager;
+import core.BasePage;
+import core.WebDriverManager;
 import org.junit.jupiter.api.*;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;

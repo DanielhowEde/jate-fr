@@ -1,4 +1,4 @@
-package com.framework.utils.jks;
+package utils.jks;
 
 import java.io.FileInputStream;
 import java.security.KeyStore;
@@ -11,7 +11,7 @@ public class JKSReader {
     private KeyStore keyStore;
     private static final String JKS_PATH = "src/test/resources/db-credentials.jks";
 
-    public JKSReader(String jksPassword) {
+    public JKSReader(String jksPassword, String string) {
         try (FileInputStream fis = new FileInputStream(JKS_PATH)) {
             keyStore = KeyStore.getInstance("JCEKS"); // Use JCEKS for password storage
             keyStore.load(fis, jksPassword.toCharArray());

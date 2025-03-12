@@ -1,4 +1,4 @@
-package com.framework.utils.config;
+package utils.config;
 
 import java.io.FileInputStream;
 import java.io.IOException;

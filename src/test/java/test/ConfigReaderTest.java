@@ -1,6 +1,6 @@
-package com.tests;
+package tests;
 
-import com.framework.utils.ConfigReader;
+import utils.config;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 

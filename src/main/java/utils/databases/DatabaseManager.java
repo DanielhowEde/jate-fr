@@ -1,9 +1,12 @@
-package com.framework.utils;
+package utils.databases;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
+
+import utils.config.ConfigReader;
+import utils.jks.JKSReader;
 
 public class DatabaseManager {
     private static Connection connection;

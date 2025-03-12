@@ -1,6 +1,6 @@
-package com.tests;
+package tests;
 
-import com.framework.utils.DatabaseManager;
+import utils.DatabaseManager;
 import org.junit.jupiter.api.*;
 import java.util.List;
 import java.util.Map;

@@ -1,4 +1,4 @@
-package com.framework.reports;
+package utils.reports;
 
 import com.aventstack.extentreports.ExtentReports;
 import com.aventstack.extentreports.ExtentTest;
@@ -46,6 +46,10 @@ public class ExtentManager {
         }
     }
 
+    public static ExtentTest getTest() {
+        return test;
+    }
+    
     public static void logFail(String message) {
         if (test != null) {
             test.fail(message);
@@ -63,4 +67,6 @@ public class ExtentManager {
             extent.flush();
         }
     }
+
+
 }

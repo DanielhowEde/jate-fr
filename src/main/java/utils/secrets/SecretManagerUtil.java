@@ -1,4 +1,4 @@
-package com.framework.utils;
+package utils.secrets;
 
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
