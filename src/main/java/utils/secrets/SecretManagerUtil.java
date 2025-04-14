@@ -7,33 +7,53 @@ import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRespon
 
 public class SecretManagerUtil {
 
+	private static final Dotenv dotenv = DotenvLoader.getDotenv();
+
+    /**
+     * Attempts to retrieve a secret in the following order:
+     * 1. AWS Secrets Manager (if configured)
+     * 2. Environment variable (System.getenv)
+     * 3. .env file (via Dotenv)
+     */
     public static String getSecret(String secretName, String envVarName) {
+        // 1. Try AWS Secrets Manager
         try {
             SecretsManagerClient client = SecretsManagerClient.create();
-            GetSecretValueRequest request = GetSecretValueRequest.builder().secretId(secretName).build();
+            GetSecretValueRequest request = GetSecretValueRequest.builder()
+                    .secretId(secretName)
+                    .build();
             GetSecretValueResponse response = client.getSecretValue(request);
-            return response.secretString();
+
+            String secretString = response.secretString();
+            if (secretString != null && !secretString.isEmpty()) {
+                System.out.println("🔐 Loaded secret from AWS Secrets Manager: " + secretName);
+                return secretString;
+            }
         } catch (Exception e) {
-            System.out.println("Secrets Manager not available or secret not found: " + secretName);
+            System.out.println("⚠️ AWS Secrets Manager not used or failed for: " + secretName);
         }
 
+        // 2. Try system environment variable
         String envValue = System.getenv(envVarName);
-        if (envValue != null) {
+        if (envValue != null && !envValue.isEmpty()) {
+            System.out.println("🔐 Loaded secret from environment variable: " + envVarName);
             return envValue;
-        } 
-        
-        try {
-        	Dotenv dotenv = Dotenv.load();
-        	String password = dotenv.get("JKS_PASSWORD");
-        	envValue = dotenv.get(envVarName);
-        	return envValue;
-        } catch (Exception e) { 
-        	throw new RuntimeException("No secret found for " + secretName + " and no fallback environment variable: " + envVarName);
         }
+
+        // 3. Try .env file
+        String dotenvValue = dotenv.get(envVarName);
+        if (dotenvValue != null && !dotenvValue.isEmpty()) {
+            System.out.println("🔐 Loaded secret from .env: " + envVarName);
+            return dotenvValue;
+        }
+
+        throw new RuntimeException("❌ No secret found for " + secretName + " and no fallback environment variable: " + envVarName);
     }
+
 
     // 🔐 Use this for JKS password retrieval
     public static String getJksPassword() {
-        return getSecret("jks_password_secret", "JKS_PASSWORD");
+    	return getSecret("jks_password_secret", "JKS_PASSWORD");
+        
     }
 }

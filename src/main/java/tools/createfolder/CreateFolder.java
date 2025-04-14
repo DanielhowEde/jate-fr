@@ -1,13 +1,14 @@
-package tools.createfolders;
+package tools.createfolder;
 
 import java.nio.file.Files;
+
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.File;
 
 
 
-public class createFolder {
+public class CreateFolder {
 	
     public static void main(String[] args) {
         if (args.length == 0) {
@@ -16,10 +17,12 @@ public class createFolder {
         }
 
         String appName = args[0].toLowerCase().replaceAll("\\s+", "");
-        String root = "./";
+        String root =  System.getProperty("user.dir");
         String enginePath = root + "/jate-fr";
         String appPath = root + "/" + appName + "-tests";
 
+        System.out.println("App Path: " + appPath);     
+        
         //createDir(enginePath);
         //createEnginePom(enginePath);
 
@@ -58,7 +61,7 @@ public class createFolder {
     static void createAppStructure(String appPath, String appName) {
         String[] subDirs = {
             "/src/test/java/runner",
-            "/src/test/java/steps",
+            "/src/test/java/pages",
             "/src/test/java/stepdefinitions",
             "/src/test/resources/features"
         };
@@ -72,9 +75,41 @@ public class createFolder {
         writeFile(appPath + "/src/test/java/stepdefinitions/SampleSteps.java", getSampleSteps());
         writeFile(appPath + "/src/test/resources/features/sample.feature", getSampleFeature());
         writeFile(appPath + "/src/test/resources/config.properties", getConfigProperties(appName));
+        writeFile(appPath + "/src/test/java/pages/SamplePOM.java", getSamplePOM());
     }
 
-    // Engine POM
+    private static String getSamplePOM() {
+		return 
+			"package pages;\n" +
+			"\n" +
+			"import core.BasePage;\n"+
+			"import core.Hooks;\n"+
+			"import org.openqa.selenium.WebDriver;\n"+
+			"import utils.context.ScenarioContext;\n"+
+			"import utils.excel.ExcelFileManager;\n"+
+			"import utils.form.DynamicFormFiller;\n"+
+			"import utils.form.FieldConfig;\n"+
+			"import utils.form.FormFieldType;\n"+
+			"import java.util.List;\n"+
+			"import java.util.Map;\n"+
+			"import static org.junit.Assert.assertTrue; \n\n"+
+			"public class Sample extends BasePage { \n" +
+			"    // ───── Locators ─────\n" +
+			"    private final String txtSample = \"//*[@id='Sample']\"; \n\n" +
+			"    // ───── Dependencies ─────\n" + 
+			"    private final WebDriver driver;\n"+
+			"    private final DynamicFormFiller formFiller;\n"+
+			"    private final ScenarioContext context = Hooks.getScenarioContext();\n\n" +
+			"    // ───── Public Actions ───── \n" +
+			"    public void fillAddressFormFromSpreadsheetRow(int index) {\n" +
+			"        Map<String, String> row = getSpreadsheetRow(index);\n" +
+			"        System.out.println(\"▶️ Filling address form from row \" + index + \": \" + row);\n" +
+			"        formFiller.fill(row);\n" +
+			"    } /n}"
+				;
+	}
+
+	// Engine POM
     static String getEnginePom() {
         return
             "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"\n" +
@@ -168,14 +203,18 @@ public class createFolder {
     static String getConfigProperties(String appName) {
         return
             "browser=chrome\n" +
-            "headless=false\n" +
-            "report.name="+ appName +"\n";
+            "headless=false\n\n" +
+            "webdriver.wait.timeout=30 \n\n" +
+            "report.name="+ appName +"\n" +
+        	"report.title="+ appName + "\n"; 
     }
     
     static void updateTestFolderList(String appName) {
         String folder = appName.toLowerCase().replaceAll("\\s+", "") + "-tests";
-        File listFile = new File("./docker/test-folders.list");
-        
+
+        String workingDir = System.getProperty("user.dir"); // Absolute path
+        File listFile = new File(workingDir + "/docker/test-folders.list");
+
         try {
             listFile.getParentFile().mkdirs(); // ensure /docker exists
             if (!listFile.exists()) {
@@ -185,7 +224,7 @@ public class createFolder {
             // Only add if not already listed
             boolean alreadyExists = Files.readAllLines(listFile.toPath()).stream()
                 .anyMatch(line -> line.trim().equals(folder));
-            
+
             if (!alreadyExists) {
                 try (FileWriter writer = new FileWriter(listFile, true)) {
                     writer.write(folder + "\n");

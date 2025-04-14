@@ -5,11 +5,13 @@ import io.cucumber.java.en.*;
 import org.junit.jupiter.api.Assertions;
 import org.openqa.selenium.WebDriver;
 import common.pages.LoginPOM;
+import common.pages.HomePagePOM;
 import static org.junit.Assert.*;
 
-public class loginSteps {
+public class LoginAndNavigationSteps {
     WebDriver driver = WebDriverManager.getDriver("chrome");
     LoginPOM loginPage = new LoginPOM(driver);
+    HomePagePOM homePage = new HomePagePOM(driver);
 
   	
     @Given("I open the login page")
@@ -49,6 +51,12 @@ public class loginSteps {
     	boolean actualStatus = loginPage.confirmLogin();
         assertFalse("Home page not loaded", actualStatus);
         	
+    }
+    
+    @When("I use the link for {string}")
+    public void navigateViaHomepage(String lnkName) {
+    	homePage.navigateToLink(lnkName);
+    	
     }
 }
 

@@ -166,13 +166,10 @@ run the commands:
 - ```javac -d out src/main/java/tools/createjks/CreateJKS.java```
 
  - ```java -cp out tools.createjks.CreateJKS```
-
-### ** POM and step generator ** creates POM and stepdeifinition files from the feature files
-
-run the follows commands
-- ```javac -d target/classes src/main/java/tools/stepdefinitiongenerator/StepDefinitionGenerator.java```
-- ```java -cp target/classes tools.stepdefinitiongenerator.StepDefinitionGenerato```
-
+ 
+ Then copy the credentials.jks to:
+ src/main/resources 
+ 
 
 ###The createFolder.java script is used to scaffold a new test module inside the test suite. It creates a clean and consistent structure for each testable application, including:
 
@@ -194,7 +191,7 @@ javac jate-fr\src\main\java\tools\createfolders\createFolder.java
 Run it with your desired app name:
 
 ```bash
-java createFolder MyAppName
+java jate-fr\src\main\java\tools\createfolders\createFolder <MyAppName>
 ```
 This will create a new directory:
 

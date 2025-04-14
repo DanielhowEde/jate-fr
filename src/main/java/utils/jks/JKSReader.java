@@ -3,28 +3,29 @@ package utils.jks;
 import utils.secrets.SecretManagerUtil;
 
 import javax.crypto.SecretKey;
-import java.io.FileInputStream;
 import java.security.KeyStore;
 import java.util.Base64;
 
 public class JKSReader {
     private KeyStore keyStore;
-    private static final String JKS_PATH = "src/test/resources/credentials.jks";
+    private static final String JKS_RESOURCE = "credentials.jks";
+    private final String jksPassword = SecretManagerUtil.getJksPassword(); // ✅ CACHED HERE
 
     public JKSReader() {
-        String jksPassword = SecretManagerUtil.getJksPassword();
-        try (FileInputStream fis = new FileInputStream(JKS_PATH)) {
+        try (var input = Thread.currentThread().getContextClassLoader().getResourceAsStream(JKS_RESOURCE)) {
+            if (input == null) {
+                throw new RuntimeException("❌ credentials.jks not found in classpath.");
+            }
             keyStore = KeyStore.getInstance("JCEKS");
-            keyStore.load(fis, jksPassword.toCharArray());
+            keyStore.load(input, jksPassword.toCharArray());
         } catch (Exception e) {
-            throw new RuntimeException("❌ Failed to load JKS file: " + JKS_PATH, e);
+            throw new RuntimeException("❌ Failed to load JKS file: " + JKS_RESOURCE, e);
         }
     }
 
     public String getSecret(String alias) {
         try {
-            String keyPassword = SecretManagerUtil.getJksPassword(); // can be same or different from store password
-            KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(keyPassword.toCharArray());
+            KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(jksPassword.toCharArray());
             KeyStore.SecretKeyEntry entry = (KeyStore.SecretKeyEntry) keyStore.getEntry(alias, protParam);
             SecretKey secretKey = entry.getSecretKey();
             return new String(secretKey.getEncoded());
@@ -35,8 +36,7 @@ public class JKSReader {
 
     public String getSecretBase64(String alias) {
         try {
-            String keyPassword = SecretManagerUtil.getJksPassword();
-            KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(keyPassword.toCharArray());
+            KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(jksPassword.toCharArray());
             KeyStore.SecretKeyEntry entry = (KeyStore.SecretKeyEntry) keyStore.getEntry(alias, protParam);
             SecretKey secretKey = entry.getSecretKey();
             return Base64.getEncoder().encodeToString(secretKey.getEncoded());

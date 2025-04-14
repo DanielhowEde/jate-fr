@@ -12,9 +12,9 @@ public class LoginPOM extends BasePage {
     public final String passwordField = "//*[@id='Password']";  // CSS Selector
     public final String loginButton = "//button[contains(text(),'Login')]"; // Button selector
     public final String errorMessage = "//*[starts-with(@style,'color: red')]"; // Error message selector
-    public final String homepageTitle = "//h1[contains(text(), 'Test Elements')]"; // Home Page Header
+    public final String homepageTitle = "//h1"; // Home Page Header
 
-    public LoginPOM(WebDriver driver) {
+    public LoginPOM (WebDriver driver) {
         super(driver);
     }
 
@@ -39,7 +39,6 @@ public class LoginPOM extends BasePage {
     	enterTextInField(usernameField, username);
     	enterTextInField(passwordField, password);
     	clickLoginButton();
-        
     }
     
 

@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.logging.Level;
@@ -30,6 +31,8 @@ public class Hooks {
     private static ExtentTest extentTest;
     private static ScenarioContext scenarioContext = new ScenarioContext();
     private static String reportDir;
+    public final static String reportNameFromConfig =  getReportPropertyFromConfig("report.name", "UnnamedProject");
+    public final static String reportTitleFromConfig =  getReportPropertyFromConfig("report.title", "Extent");
 
     public static ExtentTest getExtentTest() {
         return extentTest;
@@ -37,27 +40,42 @@ public class Hooks {
 
     @BeforeAll
     public static void setupReport() throws IOException {
-        try {
-            LogManager.getLogManager().readConfiguration(
-                Hooks.class.getClassLoader().getResourceAsStream("logging.properties")
-            );
-        } catch (IOException e) {
-            System.err.println("❌ Could not load logging config: " + e.getMessage());
+        // ✅ Fix: Load config from context class loader to support child apps
+        var configStream = Thread.currentThread().getContextClassLoader().getResourceAsStream("logging.properties");
+
+        if (configStream != null) {
+            try {
+                LogManager.getLogManager().readConfiguration(configStream);
+                logger.info("✔️ Loaded logging.properties");
+            } catch (IOException e) {
+                System.err.println("❌ Failed to load logging config: " + e.getMessage());
+            }
+        } else {
+            System.err.println("⚠️ logging.properties not found on classpath.");
         }
 
+        
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"));
-        reportDir = timestamp + "_test_reports";
-        Files.createDirectories(Path.of(reportDir)); // create the main directory
-        String reportPath = reportDir + "/ExtentReport.html";
+
+        String parentReportDir = "../test-reports"; // central location
+        reportDir = parentReportDir + "/" + reportNameFromConfig + "_" + timestamp;
+
+        Files.createDirectories(Path.of(reportDir));
+        System.out.println("📁 Reports will be stored in: " + new File(reportDir).getAbsolutePath());
+        logger.info("📁 Reports directory: " + new File(reportDir).getAbsolutePath());
+        String reportPath = reportDir + "/"+ reportTitleFromConfig + "Report.html";
+        
 
         ExtentSparkReporter sparkReporter = new ExtentSparkReporter(reportPath);
-        
         sparkReporter.config().setDocumentTitle("Automation Test Report");
         sparkReporter.config().setReportName("Cucumber Selenium Test Execution");
 
         extentReports = new ExtentReports();
         extentReports.attachReporter(sparkReporter);
         logger.info("📊 Extent Reports initialized.");
+
+        utils.excel.ExcelFileManager.clearResultsFolder("results");
+        logger.info("📊 Prepared results directory");
     }
 
     @Before
@@ -79,31 +97,32 @@ public class Hooks {
         String scenarioName = scenario.getName().replaceAll(" ", "_");
         String screenshotDir = reportDir + "/screenshots";
         Files.createDirectories(Path.of(screenshotDir));
+
         String stepText = StepLogger.getCurrentStepText()
-        	    .or(() -> Optional.ofNullable((String) scenarioContext.get("lastStepText")))
-        	    .orElse("Step " + stepCounter);
+            .or(() -> Optional.ofNullable((String) scenarioContext.get("lastStepText")))
+            .orElse("Step_" + stepCounter);
         System.out.println("👣 Step used in report: " + stepText);
-        
+
         String cleanStep = stepText.replaceAll("[^a-zA-Z0-9-_]", "_");
-        String screenshotPath = screenshotDir + "/" + scenarioName + "_" + cleanStep + ".png";
-        
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HHmmss_SSS"));
+        String screenshotName = scenarioName + "_" + cleanStep + "_" + timestamp + ".png";
+        String screenshotPath = screenshotDir + "/" + screenshotName;
+
         try {
             Files.createDirectories(Path.of("target/screenshots"));
-            Files.copy(srcFile.toPath(), Path.of(screenshotPath));
-            logger.info("Screenshot saved: " + screenshotPath);
+            Files.copy(srcFile.toPath(), Path.of(screenshotPath), StandardCopyOption.REPLACE_EXISTING);;
+            logger.info("📸 Screenshot saved: " + screenshotPath);
 
             byte[] screenshot = Files.readAllBytes(srcFile.toPath());
             scenario.attach(screenshot, "image/png", stepText + " Screenshot");
 
-            extentTest.addScreenCaptureFromPath(screenshotPath);
-
             Status status = scenario.getStatus();
             if (scenario.isFailed()) {
-                extentTest.fail("❌ '" + stepText + "' failed.").addScreenCaptureFromPath(screenshotPath);
+                extentTest.fail("❌ '" + stepText + "' failed.").addScreenCaptureFromPath("screenshots/" + screenshotName);;
             } else if (status == Status.SKIPPED || status == Status.UNDEFINED) {
-                extentTest.skip("⚠️ '" + stepText + "' was skipped or undefined.").addScreenCaptureFromPath(screenshotPath);
+                extentTest.skip("⚠️ '" + stepText + "' was skipped or undefined.").addScreenCaptureFromPath("screenshots/" + screenshotName);;
             } else {
-                extentTest.pass("✅ '" + stepText + "' passed.").addScreenCaptureFromPath(screenshotPath);
+                extentTest.pass("✅ '" + stepText + "' passed.").addScreenCaptureFromPath("screenshots/" + screenshotName);;
             }
 
         } catch (IOException e) {
@@ -112,6 +131,7 @@ public class Hooks {
 
         stepCounter++;
     }
+
 
     @After
     public void tearDown(Scenario scenario) throws IOException {
@@ -157,6 +177,17 @@ public class Hooks {
         } catch (Exception e) {
             logger.log(Level.SEVERE, "❌ Failed to quit browser: " + e.getMessage(), e);
         }
+     // Convert HTML to Word
+        try {
+            String htmlPath = reportDir + "/"+ reportTitleFromConfig + "Report.html";
+            String screenshotsDir = reportDir + "/screenshots";
+            String outputDocx = reportDir + "/" + reportTitleFromConfig.replaceAll("[^a-zA-Z0-9]", "_") + "_Report.docx";
+
+            utils.createworddocuments.CreateWordDocuments.generateWordFromHtml(htmlPath, screenshotsDir, outputDocx, reportNameFromConfig );
+            logger.info("📄 Word document created at: " + outputDocx);
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "❌ Failed to generate Word document: " + e.getMessage(), e);
+        }
         tidyDir();
     }
 
@@ -183,10 +214,18 @@ public class Hooks {
 
         if (spreadsheetTag.isPresent()) {
             String spreadsheetName = spreadsheetTag.get().replace("@Data_", "");
-            scenarioContext.set("spreadsheet", spreadsheetName);
-            logger.info("Spreadsheet stored in context at FEATURE level: " + spreadsheetName);
+            String originalPath = "testdata/" + spreadsheetName + ".xlsx";
+
+            try {
+                String workingCopyPath = utils.excel.ExcelFileManager.createWorkingCopy(originalPath, "results");
+                scenarioContext.set("spreadsheet", workingCopyPath);
+                logger.info("🧾 Working spreadsheet stored in context: " + workingCopyPath);
+            } catch (RuntimeException e) {
+                logger.severe(e.getMessage());
+                throw new RuntimeException("❌ Aborting test: missing required testdata file: " + originalPath);
+            }
         } else {
-            logger.warning("⚠️ No @Data_ tag found. Skipping spreadsheet storage.");
+            logger.info("ℹ️ No @Data_ tag found for this scenario.");
         }
     }
 
@@ -196,9 +235,9 @@ public class Hooks {
     
     private static void tidyDir() {
     	try {
-    	    File currentDir = new File("."); // base dir
+    		File currentDir = new File("test-reports"); // base reporting dir
     	    File[] reportDirs = currentDir.listFiles((dir, name) ->
-    	        name.matches("\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}_test_reports")
+    	    name.matches(".+_\\d{4}-\\d{2}-\\d{2}_\\d{2}-\\d{2}-\\d{2}")
     	    );
 
     	    if (reportDirs != null) {
@@ -232,6 +271,26 @@ public class Hooks {
                     }
                 });
         }
+    }
+    
+    private static String getReportPropertyFromConfig(String key, String defaultValue) {
+        try (var configStream = Thread.currentThread().getContextClassLoader().getResourceAsStream("config.properties")) {
+            if (configStream == null) {
+                System.err.println("⚠️ config.properties not found on classpath. Using default value for " + key);
+                return defaultValue;
+            }
+
+            var props = new java.util.Properties();
+            props.load(configStream);
+            return props.getProperty(key, defaultValue);
+        } catch (Exception e) {
+            System.err.println("⚠️ Failed to load config.properties: " + e.getMessage() + ". Using default value for " + key);
+            return defaultValue;
+        }
+    }
+    
+    public static String getReportDirectory() {
+        return reportDir;
     }
     
 }

@@ -1,10 +1,17 @@
 package core;
 
 import org.openqa.selenium.*;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
+
+import utils.config.ConfigReader;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.time.Duration;
@@ -17,14 +24,25 @@ public class BasePage {
     
     public BasePage(WebDriver driver) {
         this.driver = driver;
-        this.wait = new WebDriverWait(driver, Duration.ofSeconds(10)); // Timeout from config
+        String timeoutStr = ConfigReader.getProperty("webdriver.wait.timeout");
+        int timeout;
+
+        try {
+            timeout = Integer.parseInt(timeoutStr);
+            System.out.println("📌 Timeout set to: " + timeout + " seconds.");
+        } catch (Exception e) {
+            timeout = 40; // fallback default
+            System.out.println("⚠️ Timeout config missing or invalid. Using default: " + timeout + " seconds.");
+        }
+
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(timeout));
     }
 
     private By getLocator(String locator) {
         return locator.startsWith("//") ? By.xpath(locator) : By.cssSelector(locator);
     }
 
-    private WebElement waitForElement(String locator) {
+    protected WebElement waitForElement(String locator) {
         return wait.until(ExpectedConditions.elementToBeClickable(getLocator(locator)));
     }
 
@@ -207,9 +225,16 @@ public class BasePage {
     public String captureScreenshot(String screenshotName) {
         try {
             File srcFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
-            String screenshotPath = "screenshots/" + screenshotName + ".png";
+
+            // Align with Hooks.java reportDir
+            String reportDir = core.Hooks.getReportDirectory(); // Add a getter for reportDir in Hooks.java
+            String screenshotDir = reportDir + "/screenshots";
+            new File(screenshotDir).mkdirs();
+
+            String screenshotPath = screenshotDir + "/" + screenshotName + ".png";
             File destFile = new File(screenshotPath);
-            srcFile.renameTo(destFile);
+            Files.copy(srcFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
             System.out.println("✅ Screenshot taken: " + screenshotPath);
             return screenshotPath;
         } catch (Exception e) {
@@ -327,9 +352,9 @@ public class BasePage {
         }
     }
     
-    public boolean elementExists(By locator) {
+    public boolean elementExists(By selector) {
         try {
-            return driver.findElement(locator).isDisplayed();
+            return driver.findElement(selector).isDisplayed();
         } catch (NoSuchElementException | StaleElementReferenceException e) {
             return false;
         }
@@ -470,6 +495,98 @@ public class BasePage {
 	        throw new RuntimeException("❌ Failed drag-and-drop upload for file: " + filePath, e);
 	    }
 	}
+	
+	public void assertValue(String pageName, String fieldName, String expectedValue, String actualValue, boolean testType) {
+		if (testType) {
+		    try {
+		        assertTrue("On Page '" + pageName+ "' for Field: '"+ fieldName +"' Expected: '" + expectedValue + "' Actual: '" + actualValue + "'", expectedValue.equals(actualValue));
+		        Hooks.getExtentTest().pass("✅ Navigated and verified passed for field: " + fieldName);
+		    } catch (AssertionError ae) {
+		        Hooks.getExtentTest().fail("❌ Assertion failed: " + ae.getMessage());
+		        throw ae; // re-throw so the test still fails
+		    }	
+		} else {
+		    try {
+		        assertFalse("On Page '" + pageName+ "' for Field: '"+ fieldName +"' Should not match Expected: '" + expectedValue + "' Actual: '" + actualValue + "'", expectedValue.equals(actualValue));
+		        Hooks.getExtentTest().pass("✅ Navigated and verified passed for field: " + fieldName);
+		    } catch (AssertionError ae) {
+		        Hooks.getExtentTest().fail("❌ Assertion failed: " + ae.getMessage());
+		        throw ae; // re-throw so the test still fails
+		    }	
+		}
+	}
+	
+	public void assertCheckboxSelected(String locator, boolean shouldBeSelected) {
+	    WebElement checkbox = waitForElement(locator);
+	    boolean isSelected = checkbox.isSelected();
+	    if (shouldBeSelected) {
+	        assertTrue("❌ Checkbox should be selected: " + locator, isSelected);
+	        System.out.println("✅ Checkbox is selected: " + locator);
+	    } else {
+	        assertFalse("❌ Checkbox should not be selected: " + locator, isSelected);
+	        System.out.println("✅ Checkbox is not selected: " + locator);
+	    }
+	}
+	
+	public void assertRadioButtonSelected(String locator, boolean shouldBeSelected) {
+	    WebElement radioButton = waitForElement(locator);
+	    boolean isSelected = radioButton.isSelected();
+	    if (shouldBeSelected) {
+	        assertTrue("❌ Radio button should be selected: " + locator, isSelected);
+	        System.out.println("✅ Radio button is selected: " + locator);
+	    } else {
+	        assertFalse("❌ Radio button should not be selected: " + locator, isSelected);
+	        System.out.println("✅ Radio button is not selected: " + locator);
+	    }
+	}
+	
+	
+	public void assertValue(String pageName, String fieldName, String expectedValue, String actualValue) {
+		assertValue(pageName,fieldName,expectedValue,actualValue, true);
+	}
+	
+	// 🔍 Shadow DOM Support
+
+	public WebElement expandShadowRoot(WebElement shadowHost) {
+	    try {
+	        JavascriptExecutor js = (JavascriptExecutor) driver;
+	        return (WebElement) js.executeScript("return arguments[0].shadowRoot", shadowHost);
+	    } catch (Exception e) {
+	        throw new RuntimeException("❌ Failed to expand shadow root for host element", e);
+	    }
+	}
+
+	public WebElement findElementInShadowRoot(String hostLocator, String shadowCssSelector) {
+	    try {
+	        WebElement host = waitForElement(hostLocator);
+	        WebElement shadowRoot = expandShadowRoot(host);
+	        return shadowRoot.findElement(By.cssSelector(shadowCssSelector));
+	    } catch (Exception e) {
+	        throw new RuntimeException("❌ Failed to find element in shadow DOM: " + shadowCssSelector, e);
+	    }
+	}
+
+	// 🖼️ iFrame Support
+
+	public void switchToIFrame(String locator) {
+	    try {
+	        WebElement iframe = waitForElement(locator);
+	        driver.switchTo().frame(iframe);
+	        System.out.println("✅ Switched to iFrame: " + locator);
+	    } catch (Exception e) {
+	        throw new RuntimeException("❌ Failed to switch to iFrame: " + locator, e);
+	    }
+	}
+
+	public void switchToDefaultContent() {
+	    try {
+	        driver.switchTo().defaultContent();
+	        System.out.println("✅ Switched to default content");
+	    } catch (Exception e) {
+	        throw new RuntimeException("❌ Failed to switch to default content", e);
+	    }
+	}
+
 }
 
 
