@@ -18,7 +18,7 @@ public class CreateFolder {
 
         String appName = args[0].toLowerCase().replaceAll("\\s+", "");
         String root =  System.getProperty("user.dir");
-        String enginePath = root + "/jate-fr";
+        // String enginePath = root + "/jate-fr";
         String appPath = root + "/" + appName + "-tests";
 
         System.out.println("App Path: " + appPath);     

@@ -4,7 +4,6 @@ import core.BasePage;
 import static org.junit.Assert.*;
 import org.openqa.selenium.WebDriver;
 import utils.jks.JKSReader;
-import utils.secrets.SecretManagerUtil;
 
 public class LoginPOM extends BasePage {
 

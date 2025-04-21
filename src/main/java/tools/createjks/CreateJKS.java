@@ -2,11 +2,9 @@ package tools.createjks;
 
 import java.io.*;
 import java.security.*;
-import java.security.cert.CertificateException;
 import java.util.Properties;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-import javax.security.auth.callback.*;
 
 
 public class CreateJKS {

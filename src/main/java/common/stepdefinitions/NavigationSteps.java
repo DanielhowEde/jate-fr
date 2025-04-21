@@ -1,12 +1,10 @@
 package common.stepdefinitions;
 
-import core.WebDriverManager;
+
 import io.cucumber.java.en.*;
-import org.junit.jupiter.api.Assertions;
 import org.openqa.selenium.WebDriver;
-import common.pages.LoginPOM;
-import common.pages.HomePagePOM;
-import static org.junit.Assert.*;
+
+
 
 public class NavigationSteps {
 

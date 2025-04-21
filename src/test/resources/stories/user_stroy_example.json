@@ -1,0 +1,8 @@
+{
+  "storyName": "User Checkout Flow",
+  "tags": ["@storyData:user_checkout_data.xlsx"],
+  "features": [
+    "features/example1.feature",
+    "features/excample2.feature"
+  ]
+}
