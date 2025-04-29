@@ -1,3 +1,8 @@
+/*
+ * © 2025 Daniel Ede. This code is licensed for personal or educational use only.
+ * Unauthorized reproduction or distribution is prohibited.
+ */
+
 package core;
 
 import org.openqa.selenium.WebDriver;
@@ -10,6 +15,7 @@ import org.openqa.selenium.edge.EdgeOptions;
 import utils.config.ConfigReader;
 
 import java.util.logging.Logger;
+import java.util.Map;
 import java.util.logging.Level;
 
 public class WebDriverManager {
@@ -38,6 +44,13 @@ public class WebDriverManager {
                     case "chrome":
                         io.github.bonigarcia.wdm.WebDriverManager.chromedriver().setup();
                         ChromeOptions chromeOptions = new ChromeOptions();
+                        
+                        chromeOptions.setExperimentalOption("prefs", Map.of(
+                        	    "credentials_enable_service", false,
+                        	    "profile.password_manager_enabled", false
+                        	));
+                        chromeOptions.addArguments("--disable-save-password-bubble");
+                        	
                         if (isHeadless)
                             chromeOptions.addArguments("--headless=new", "--window-size=1920,1080", "--disable-gpu");
                         driver = new ChromeDriver(chromeOptions);

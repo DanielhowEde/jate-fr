@@ -4,6 +4,7 @@ import core.WebDriverManager;
 import io.cucumber.java.en.*;
 import org.openqa.selenium.WebDriver;
 import common.pages.LoginPOM;
+import common.pages.NavigationPOM;
 import common.pages.HomePagePOM;
 import static org.junit.Assert.*;
 
@@ -11,8 +12,13 @@ public class LoginAndNavigationSteps {
     WebDriver driver = WebDriverManager.getDriver("chrome");
     LoginPOM loginPage = new LoginPOM(driver);
     HomePagePOM homePage = new HomePagePOM(driver);
-
+    NavigationPOM navigationPage = new NavigationPOM(driver);
   	
+	@When("^I open the url (?:url|site) \"([^\"]*)\"$")
+	public void openSite(String url) {
+	    driver.get(url);
+	}
+    
     @Given("I open the login page")
     public void navigateToLoginPage() {
         driver.get("http://localhost:3000/");
@@ -49,12 +55,16 @@ public class LoginAndNavigationSteps {
     public void checkForError() {
     	boolean actualStatus = loginPage.confirmLogin();
         assertFalse("Home page not loaded", actualStatus);
-        	
     }
     
     @When("I use the link for {string}")
     public void navigateViaHomepage(String lnkName) {
     	homePage.navigateToLink(lnkName);
+    }
+    
+    @Given("I navigate to {string}")
+    public void navigateToPage(String link) {
+    	navigationPage.navigateTo(link);
     	
     }
 }

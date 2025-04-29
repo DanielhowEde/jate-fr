@@ -16,7 +16,22 @@ public class SecretManagerUtil {
      * 3. .env file (via Dotenv)
      */
     public static String getSecret(String secretName, String envVarName) {
-        // 1. Try AWS Secrets Manager
+        
+        // 1. Try system environment variable
+        String envValue = System.getenv(envVarName);
+        if (envValue != null && !envValue.isEmpty()) {
+            System.out.println("🔐 Loaded secret from environment variable: " + envVarName);
+            return envValue;
+        }
+
+        // 2. Try .env file
+        String dotenvValue = dotenv.get(envVarName);
+        if (dotenvValue != null && !dotenvValue.isEmpty()) {
+            System.out.println("🔐 Loaded secret from .env: " + envVarName);
+            return dotenvValue;
+        }
+    	
+    	// 3. Try AWS Secrets Manager
         try {
             SecretsManagerClient client = SecretsManagerClient.create();
             GetSecretValueRequest request = GetSecretValueRequest.builder()
@@ -31,20 +46,6 @@ public class SecretManagerUtil {
             }
         } catch (Exception e) {
             System.out.println("⚠️ AWS Secrets Manager not used or failed for: " + secretName);
-        }
-
-        // 2. Try system environment variable
-        String envValue = System.getenv(envVarName);
-        if (envValue != null && !envValue.isEmpty()) {
-            System.out.println("🔐 Loaded secret from environment variable: " + envVarName);
-            return envValue;
-        }
-
-        // 3. Try .env file
-        String dotenvValue = dotenv.get(envVarName);
-        if (dotenvValue != null && !dotenvValue.isEmpty()) {
-            System.out.println("🔐 Loaded secret from .env: " + envVarName);
-            return dotenvValue;
         }
 
         throw new RuntimeException("❌ No secret found for " + secretName + " and no fallback environment variable: " + envVarName);

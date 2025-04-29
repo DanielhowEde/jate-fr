@@ -17,33 +17,45 @@ import java.util.logging.Logger;
 public class ExcelFileManager {
     private Workbook workbook;
     private Sheet sheet;
-    private Iterator<Row> rowIterator;
     private List<String> headers;
+    private List<Map<String, String>> allRows; // 🚀 preload ALL rows
+    private Iterator<Row> rowIterator;
     private static final Logger logger = Logger.getLogger(ExcelFileManager.class.getName());
+
 
     public ExcelFileManager(String filePath, String sheetName) {
         try (FileInputStream fis = new FileInputStream(filePath)) {
             this.workbook = new XSSFWorkbook(fis);
-            
+
             if (sheetName != null && !sheetName.isBlank()) {
                 this.sheet = workbook.getSheet(sheetName);
                 if (this.sheet == null) {
                     throw new RuntimeException("❌ Sheet not found: " + sheetName);
                 }
             } else {
-                this.sheet = workbook.getSheetAt(0); // default to first tab
+                this.sheet = workbook.getSheetAt(0);
             }
-            
-            this.rowIterator = sheet.iterator();
 
-            // Extract headers from the first row
-            if (rowIterator.hasNext()) {
-                Row headerRow = rowIterator.next();
-                headers = new ArrayList<>();
-                for (Cell cell : headerRow) {
-                    headers.add(cell.getStringCellValue().trim());
-                }
+            // Read headers
+            Row headerRow = sheet.getRow(0);
+            headers = new ArrayList<>();
+            for (Cell cell : headerRow) {
+                headers.add(cell.getStringCellValue().trim());
             }
+
+            // Read all rows immediately
+            allRows = new ArrayList<>();
+            for (int r = 1; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+                Map<String, String> dataRow = new HashMap<>();
+                for (int c = 0; c < headers.size(); c++) {
+                    Cell cell = row.getCell(c, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
+                    dataRow.put(headers.get(c), getCellValueAsString(cell));
+                }
+                allRows.add(dataRow);
+            }
+
         } catch (IOException e) {
             throw new RuntimeException("❌ Failed to load Excel file: " + filePath, e);
         }
@@ -64,13 +76,28 @@ public class ExcelFileManager {
 
         return dataMap;
     }
+    
+    public List<Map<String, String>> getAllRows() {
+        return allRows; // ✅ always return cached rows
+    }
 
     private String getCellValueAsString(Cell cell) {
+        FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+
         return switch (cell.getCellType()) {
             case STRING -> cell.getStringCellValue().trim();
             case NUMERIC -> String.valueOf((int) cell.getNumericCellValue());
             case BOOLEAN -> String.valueOf(cell.getBooleanCellValue());
-            case FORMULA -> cell.getCellFormula();
+            case FORMULA -> {
+                CellValue evaluatedValue = evaluator.evaluate(cell);
+                yield switch (evaluatedValue.getCellType()) {
+                    case STRING -> evaluatedValue.getStringValue().trim();
+                    case NUMERIC -> String.valueOf((int) evaluatedValue.getNumberValue());
+                    case BOOLEAN -> String.valueOf(evaluatedValue.getBooleanValue());
+                    case BLANK -> "";
+                    default -> "Unsupported formula type";
+                };
+            }
             case BLANK -> "";
             default -> "Unsupported cell type";
         };
@@ -116,22 +143,34 @@ public class ExcelFileManager {
         }
     }
     
-    public List<Map<String, String>> getAllRows() {
-        List<Map<String, String>> allRows = new ArrayList<>();
+    
+    public static void cleanOldResults(String resultsFolderPath, long maxAgeHours) {
+        try {
+            Path resultsPath = Paths.get(resultsFolderPath);
+            if (Files.exists(resultsPath)) {
+                long cutoffTime = System.currentTimeMillis() - (maxAgeHours * 60 * 60 * 1000);
 
-        while (rowIterator.hasNext()) {
-            Row row = rowIterator.next();
-            Map<String, String> dataMap = new HashMap<>();
-
-            for (int i = 0; i < headers.size(); i++) {
-                Cell cell = row.getCell(i, Row.MissingCellPolicy.CREATE_NULL_AS_BLANK);
-                dataMap.put(headers.get(i), getCellValueAsString(cell));
+                Files.walk(resultsPath)
+                    .filter(Files::isRegularFile)
+                    .filter(path -> {
+                        try {
+                            return Files.getLastModifiedTime(path).toMillis() < cutoffTime;
+                        } catch (IOException e) {
+                            return false;
+                        }
+                    })
+                    .forEach(path -> {
+                        try {
+                            Files.delete(path);
+                            System.out.println("🗑️ Deleted old result file: " + path);
+                        } catch (IOException e) {
+                            System.err.println("⚠️ Could not delete file: " + path);
+                        }
+                    });
             }
-
-            allRows.add(dataMap);
+        } catch (IOException e) {
+            throw new RuntimeException("❌ Failed to clean old results: " + resultsFolderPath, e);
         }
-
-        return allRows;
     }
 }
 

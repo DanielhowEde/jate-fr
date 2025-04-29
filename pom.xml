@@ -36,6 +36,20 @@
 		    <version>2.16.1</version>
 		</dependency>
 		
+		<!-- SLF4J API -->
+		<dependency>
+		    <groupId>org.slf4j</groupId>
+		    <artifactId>slf4j-api</artifactId>
+		    <version>2.0.9</version>
+		</dependency>
+		
+		<!-- Logback Classic (Backend for SLF4J) -->
+		<dependency>
+		    <groupId>ch.qos.logback</groupId>
+		    <artifactId>logback-classic</artifactId>
+		    <version>1.4.11</version>
+		</dependency>
+				
 		<dependency>
 		    <groupId>org.apache.poi</groupId>
 		    <artifactId>poi-ooxml-full</artifactId>
@@ -109,6 +123,13 @@
 			<version>7.21.1</version>
 		</dependency>
 
+	    <!-- Cucumber Messages (VERY IMPORTANT for ExtentCucumberAdapter) -->
+	    <dependency>
+	        <groupId>io.cucumber</groupId>
+	        <artifactId>messages</artifactId>
+	        <version>21.0.1</version> <!-- This version is safe with 7.21.1 -->
+	    </dependency>
+
 		<!-- https://mvnrepository.com/artifact/ch.qos.logback/logback-classic -->
 		<dependency>
 			<groupId>ch.qos.logback</groupId>
@@ -152,6 +173,13 @@
 			<groupId>com.aventstack</groupId>
 			<artifactId>extentreports</artifactId>
 			<version>5.1.2</version>
+		</dependency>
+		
+		<!-- ExtentReports Cucumber Adapter -->
+		<dependency>
+		    <groupId>tech.grasshopper</groupId>
+		    <artifactId>extentreports-cucumber6-adapter</artifactId>
+		    <version>2.10.0</version> <!-- or latest stable -->
 		</dependency>
 		
 		<!-- AWS SDK for Secrets Manager -->

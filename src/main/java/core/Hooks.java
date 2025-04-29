@@ -1,3 +1,8 @@
+/*
+ * © 2025 Daniel Ede. This code is licensed for personal or educational use only.
+ * Unauthorized reproduction or distribution is prohibited.
+ */
+
 package core;
 
 import io.cucumber.java.*;
@@ -7,6 +12,9 @@ import com.aventstack.extentreports.reporter.ExtentSparkReporter;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
+
+import utils.context.ContextManager;
+import utils.context.StoryContext;
 import utils.context.ScenarioContext;
 import io.cucumber.java.Status;
 import listeners.StepLogger;
@@ -15,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 import java.util.logging.Logger;
@@ -74,8 +83,6 @@ public class Hooks {
         extentReports.attachReporter(sparkReporter);
         logger.info("📊 Extent Reports initialized.");
 
-        utils.excel.ExcelFileManager.clearResultsFolder("results");
-        logger.info("📊 Prepared results directory");
     }
 
     @Before
@@ -84,8 +91,15 @@ public class Hooks {
         driver.manage().window().maximize();
         extentTest = extentReports.createTest(scenario.getName());
 
-        if (!scenarioContext.contains("spreadsheet")) {
-            extractSpreadsheetName(scenario);
+        // 🚀 Pass the scenarioContext to ContextManager so Story/Scenario modes can decide
+        ContextManager.setScenarioContext(scenarioContext);
+
+        if (StoryContext.isStoryMode()) {
+            logger.info("📘 Story mode active — ignoring @Data_ tags on features.");
+        } else {
+            if (!ContextManager.contains("spreadsheet")) {
+                extractSpreadsheetName(scenario);
+            }
         }
 
         logger.info("✅ WebDriver Initialized");
@@ -171,7 +185,10 @@ public class Hooks {
 
         scenarioContext = new ScenarioContext();
         logger.info("ScenarioContext cleared after feature execution.");
-
+        
+        utils.excel.ExcelFileManager.cleanOldResults("results", 6);
+        logger.info("Tidied up results file");
+        
         try {
             core.WebDriverManager.quitDriver();
         } catch (Exception e) {
@@ -292,5 +309,6 @@ public class Hooks {
     public static String getReportDirectory() {
         return reportDir;
     }
+    
     
 }
