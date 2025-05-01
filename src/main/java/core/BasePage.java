@@ -68,6 +68,18 @@ public class BasePage {
         return (Boolean) js.executeScript(script, element);
     }
 
+    public void selectDateFromCalendar(String dateFieldLocator, String date) {
+        try {
+            WebElement dateField = waitForElement(dateFieldLocator);
+            dateField.clear();
+            dateField.sendKeys(date);
+            dateField.sendKeys(Keys.TAB); // Close the calendar if needed
+            Logger.info("✅ Date entered: " + date);
+        } catch (Exception e) {
+            throw new RuntimeException("❌ Failed to set date in calendar: " + dateFieldLocator, e);
+        }
+    }
+    
     public void clickElementByLocator(By locator, long timeoutMs) {
         long endTime = System.currentTimeMillis() + timeoutMs;
         boolean clicked = false;
@@ -700,6 +712,25 @@ public class BasePage {
 	
 	public void assertValue(String pageName, String fieldName, String expectedValue, String actualValue) {
 		assertValue(pageName,fieldName,expectedValue,actualValue, true);
+	}
+	
+	public void checkElementProperty(String xpath, String attributeName, String expectedValue) {
+	    try {
+	        WebElement element = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
+
+	        // Wait until the attribute has the expected value
+	        wait.until(ExpectedConditions.attributeToBe(element, attributeName, expectedValue));
+
+	        String actualValue = element.getAttribute(attributeName);
+	        assertTrue("❌ Expected attribute '" + attributeName + "' to be '" + expectedValue 
+	                   + "', but was: '" + actualValue + "'", expectedValue.equalsIgnoreCase(actualValue));
+	        Logger.info("✅ Attribute '" + attributeName + "' has expected value: " + expectedValue);
+	    } catch (TimeoutException e) {
+	        throw new AssertionError("❌ Timeout: attribute '" + attributeName + "' did not become '" 
+	                                 + expectedValue + "' for element: " + xpath, e);
+	    } catch (Exception e) {
+	        throw new RuntimeException("❌ Failed to verify attribute '" + attributeName + "' for: " + xpath, e);
+	    }
 	}
 	
 	// 🔍 Shadow DOM Support
