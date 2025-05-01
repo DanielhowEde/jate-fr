@@ -50,7 +50,11 @@ public class BasePage {
     }
 
     private By getLocator(String locator) {
-        return locator.startsWith("//") ? By.xpath(locator) : By.cssSelector(locator);
+        String trimmed = locator.trim();
+        if (trimmed.startsWith("/") || trimmed.startsWith("(")) {
+            return By.xpath(locator);
+        }
+        return By.cssSelector(locator);
     }
 
     protected WebElement waitForElement(String locator) {
