@@ -32,7 +32,7 @@ public class DynamicFormFiller extends BasePage {
                     case TEXTBOX:
                     case TEXTAREA:
                     case DATEPICKER:
-                        enterTextInField(locator, value);
+                    	selectDateFromCalendar(locator, value);
                         break;
 
                     case DROPDOWN:
