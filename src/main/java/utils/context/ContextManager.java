@@ -37,4 +37,8 @@ public class ContextManager {
             return false;
         }
     }
+    
+    public static Object getOrDefault(String key, Object defaultValue) {
+        return contains(key) ? get(key) : defaultValue;
+    }
 }

@@ -1,14 +1,20 @@
 package utils.form;
 
-import utils.form.FormFieldType;
-
 public class FieldConfig {
-    private final String fieldId;         // HTML ID or locator key
-    private final FormFieldType type;     // TEXTBOX, DROPDOWN, etc.
+    private final String fieldId;
+    private final FormFieldType type;
+    private final Runnable beforeFill;
+    private final Runnable afterFill;
 
     public FieldConfig(String fieldId, FormFieldType type) {
+        this(fieldId, type, null, null);
+    }
+
+    public FieldConfig(String fieldId, FormFieldType type, Runnable beforeFill, Runnable afterFill) {
         this.fieldId = fieldId;
         this.type = type;
+        this.beforeFill = beforeFill;
+        this.afterFill = afterFill;
     }
 
     public String getFieldId() {
@@ -17,5 +23,13 @@ public class FieldConfig {
 
     public FormFieldType getType() {
         return type;
+    }
+
+    public Runnable getBeforeFill() {
+        return beforeFill;
+    }
+
+    public Runnable getAfterFill() {
+        return afterFill;
     }
 }
