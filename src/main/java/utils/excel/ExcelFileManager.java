@@ -15,7 +15,7 @@ import java.util.logging.Logger;
 
 
 public class ExcelFileManager {
-    private Workbook workbook;
+    private static Workbook workbook;
     private Sheet sheet;
     private List<String> headers;
     private List<Map<String, String>> allRows; // 🚀 preload ALL rows
@@ -170,6 +170,16 @@ public class ExcelFileManager {
             }
         } catch (IOException e) {
             throw new RuntimeException("❌ Failed to clean old results: " + resultsFolderPath, e);
+        }
+    }
+    
+    public void close() {
+        try {
+            if (workbook != null) {
+                workbook.close();
+            }
+        } catch (IOException e) {
+            logger.warning("⚠️ Failed to close workbook: " + e.getMessage());
         }
     }
 }

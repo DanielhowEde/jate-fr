@@ -47,7 +47,8 @@ public class WebDriverManager {
                         
                         chromeOptions.setExperimentalOption("prefs", Map.of(
                         	    "credentials_enable_service", false,
-                        	    "profile.password_manager_enabled", false
+                        	    "profile.password_manager_enabled", false,
+                        	    "profile.default_content_setting_values.notifications", 2 // 2 = Block notifications
                         	));
                         chromeOptions.addArguments("--disable-save-password-bubble");
                         	
@@ -59,6 +60,8 @@ public class WebDriverManager {
                     case "firefox":
                         io.github.bonigarcia.wdm.WebDriverManager.firefoxdriver().setup();
                         FirefoxOptions firefoxOptions = new FirefoxOptions();
+                        firefoxOptions.addPreference("dom.webnotifications.enabled", false);
+                        firefoxOptions.addPreference("dom.push.enabled", false); // Optional, extra precaution
                         if (isHeadless) firefoxOptions.addArguments("--headless");
                         driver = new FirefoxDriver(firefoxOptions);
                         break;
@@ -66,6 +69,10 @@ public class WebDriverManager {
                     case "edge":
                         io.github.bonigarcia.wdm.WebDriverManager.edgedriver().setup();
                         EdgeOptions edgeOptions = new EdgeOptions();
+                        edgeOptions.setExperimentalOption("prefs", Map.of(
+                            "profile.default_content_setting_values.notifications", 2
+                        ));
+                        edgeOptions.addArguments("--disable-notifications");
                         if (isHeadless) edgeOptions.addArguments("--headless");
                         driver = new EdgeDriver(edgeOptions);
                         break;
