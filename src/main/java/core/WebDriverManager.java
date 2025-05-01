@@ -47,7 +47,8 @@ public class WebDriverManager {
                         
                         chromeOptions.setExperimentalOption("prefs", Map.of(
                         	    "credentials_enable_service", false,
-                        	    "profile.password_manager_enabled", false
+                        	    "profile.password_manager_enabled", false,
+                        	    "profile.default_content_setting_values.notifications", 2
                         	));
                         chromeOptions.addArguments("--disable-save-password-bubble");
                         	

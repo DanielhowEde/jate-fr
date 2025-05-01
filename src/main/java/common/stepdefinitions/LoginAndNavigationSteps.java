@@ -5,38 +5,31 @@ import io.cucumber.java.en.*;
 import org.openqa.selenium.WebDriver;
 import common.pages.LoginPOM;
 import common.pages.NavigationPOM;
-import common.pages.HomePagePOM;
 import static org.junit.Assert.*;
 
 public class LoginAndNavigationSteps {
     WebDriver driver = WebDriverManager.getDriver("chrome");
     LoginPOM loginPage = new LoginPOM(driver);
-    HomePagePOM homePage = new HomePagePOM(driver);
     NavigationPOM navigationPage = new NavigationPOM(driver);
   	
-	@When("^I open the url (?:url|site) \"([^\"]*)\"$")
+	@Given("I open the URL {string}")
 	public void openSite(String url) {
 	    driver.get(url);
 	}
-    
-    @Given("I open the login page")
-    public void navigateToLoginPage() {
-        driver.get("http://localhost:3000/");
+	
+	@Given("I enter {string}  into the username field")
+    public void enterUsername(String user){
+    	loginPage.enterUsername(user);
     }
     
+    @Given("I enter {string} into the password field")
+    public void enterPassword(String user){
+    	loginPage.enterPassword(user);
+    }
+       
     @Given("I login as {string} user")
     public void loginAsUser(String user){
     	loginPage.loginAsUser(user);
-    }
-
-    @When("I enter {string} into the username field")
-    public void enterUsername(String username) {
-        loginPage.enterUsername(username);
-    }
-
-    @When("I enter {string} into the password field")
-    public void enterPassword(String password) {
-        loginPage.enterPassword(password);
     }
 
     @When("I click the login button")
@@ -48,7 +41,6 @@ public class LoginAndNavigationSteps {
     public void congfirmLogin() {
     	boolean actualStatus = loginPage.confirmLogin();
         assertTrue("Home page not loaded", actualStatus);
-        	
     }
     
     @When("I should see an error message")
@@ -57,15 +49,10 @@ public class LoginAndNavigationSteps {
         assertFalse("Home page not loaded", actualStatus);
     }
     
-    @When("I use the link for {string}")
-    public void navigateViaHomepage(String lnkName) {
-    	homePage.navigateToLink(lnkName);
-    }
     
     @Given("I navigate to {string}")
     public void navigateToPage(String link) {
     	navigationPage.navigateTo(link);
-    	
     }
 }
 

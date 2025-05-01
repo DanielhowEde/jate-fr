@@ -155,10 +155,11 @@ String value = (String) Hooks.getContext().get("<key>");
 In root directory of the application create a csv with headers alias,username,password
 
 i.e. 
+``` csv file
 alias,username,password
 devuser1,dev@example.com,devpass
 qauser2,qa@example.com,qapass
-
+```
  Create .env file containing
 - ``` JKS_PASSWORD=MySuperSecureRandomPwd123!```
 
@@ -186,14 +187,14 @@ Compile the initializer:
 
 
 ```bash
-javac jate-fr\src\main\java\tools\createfolders\createFolder.java
+javac jate-fr\src\main\java\tools\createfolder\CreateFolder.java
 ```
 Run it with your desired app name:
 
 ```bash
-java jate-fr\src\main\java\tools\createfolders\createFolder <MyAppName>
+java jate-fr\src\main\java\tools\createfolder\CreateFolder <MyAppName>
 ```
-This will create a new directory:
+This will create a new directory with a sufix of -tests:
 
 
 ```bash
