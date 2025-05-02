@@ -100,14 +100,18 @@ public class BasePage {
 
             // Iterate through each found element to find a clickable one
             for (WebElement element : elements) {
+                // Scroll element into view using JavaScript
+                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", element);
+
                 if (!element.isDisplayed()) {
-                	 LOGGER.debug("Element found but not visible (isDisplayed() == false). Skipping this element.");
+                    LOGGER.debug("Element found but not visible (isDisplayed() == false). Skipping this element.");
                     continue;
                 }
                 if (!element.isEnabled()) {
-                	 LOGGER.debug("Element found but not enabled (isEnabled() == false). Skipping this element.");
+                    LOGGER.debug("Element found but not enabled (isEnabled() == false). Skipping this element.");
                     continue;
                 }
+
                 // Check if element is not overlapped by another element at its center point
                 JavascriptExecutor js = (JavascriptExecutor) driver;
                 Boolean isTopElement = (Boolean) js.executeScript(
@@ -121,31 +125,16 @@ public class BasePage {
                 );
 
                 if (isTopElement != null && isTopElement) {
-                    // Element is visible, enabled, and not overlapped – safe to click
-                	 LOGGER.info("Clicking element: " + locator);
+                    LOGGER.info("Clicking element: " + locator);
                     element.click();
                     LOGGER.info("Element clicked successfully.");
                     clicked = true;
                     break;
                 } else {
-                	 LOGGER.debug("Element is overlapped by another element (not top at its center). Skipping this element.");
-                    // continue to next element
+                    LOGGER.debug("Element is overlapped by another element (not top at its center). Skipping this element.");
                 }
-            }
-
-            if (!clicked) {
-                // No element was clickable in this iteration, wait briefly and retry
-                try {
-                    Thread.sleep(POLLING_INTERVAL_MS);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Interrupted while waiting for element to become clickable", ie);
-                }
-                LOGGER.info("Retrying to find a clickable element for locator: " + locator);
             }
         }
-        
-        
 
         if (!clicked) {
             // Timeout reached without clicking any element
@@ -156,81 +145,20 @@ public class BasePage {
         }
     }
 
-    public void clickElementByLocator(String thisLocator) {
+    public void clickElementByLocatorString(String thisLocator) {
     	By locator = this.getLocator(thisLocator);
         long endTime = System.currentTimeMillis() + timeoutInSeconds * 1000L;
-        boolean clicked = false;
-        Logger.info("Attempting to click element(s) located by: " + locator);
-
-        while (System.currentTimeMillis() < endTime && !clicked) {
-            // Find all elements matching the locator
-            List<WebElement> elements = driver.findElements(locator);
-            if (elements.isEmpty()) {
-            	Logger.info("No elements found for locator " + locator + " yet.");
-            } else {
-            	 Logger.info("Found " + elements.size() + " element(s) for locator " + locator + ". Checking clickability...");
-            }
-
-            // Iterate through each found element to find a clickable one
-            for (WebElement element : elements) {
-                if (!element.isDisplayed()) {
-                	Logger.info("Element found but not visible (isDisplayed() == false). Skipping this element.");
-                    continue;
-                }
-                if (!element.isEnabled()) {
-                	Logger.info("Element found but not enabled (isEnabled() == false). Skipping this element.");
-                    continue;
-                }
-                // Check if element is not overlapped by another element at its center point
-                JavascriptExecutor js = (JavascriptExecutor) driver;
-                Boolean isTopElement = (Boolean) js.executeScript(
-                    "var elem = arguments[0];" +
-                    "var rect = elem.getBoundingClientRect();" +
-                    "var cx = rect.left + (rect.width / 2);" +
-                    "var cy = rect.top + (rect.height / 2);" +
-                    "var topElem = document.elementFromPoint(cx, cy);" +
-                    "return (topElem === elem || elem.contains(topElem));",
-                    element
-                );
-
-                if (isTopElement != null && isTopElement) {
-                    // Element is visible, enabled, and not overlapped – safe to click
-                	Logger.info("Clicking element: " + locator);
-                    element.click();
-                    Logger.info("Element clicked successfully.");
-                    clicked = true;
-                    break;
-                } else {
-                	Logger.info("Element is overlapped by another element (not top at its center). Skipping this element.");
-                    // continue to next element
-                }
-            }
-
-            if (!clicked) {
-                // No element was clickable in this iteration, wait briefly and retry
-                try {
-                    Thread.sleep(POLLING_INTERVAL_MS);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Interrupted while waiting for element to become clickable", ie);
-                }
-                System.out.println("Retrying to find a clickable element for locator: " + locator);
-            }
-        }
-        
-        if (!clicked) {
-            // Timeout reached without clicking any element
-            String errorMsg = "Failed to click any element for locator " + locator 
-                              + " after " + timeoutInSeconds + " seconds (no clickable element found).";
-            Logger.error(errorMsg);
-            throw new TimeoutException(errorMsg);
-        }
+        clickElementByLocator(locator, endTime);
     }   
     
 
     public void enterTextInField(String locator, String text) {
         try {
             WebElement element = waitForElement(locator);
+
+            // Scroll element into view (center of the screen)
+            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", element);
+
             element.clear();
             element.sendKeys(text);
             Logger.info("✅ Entered text: " + text + " in " + locator);
@@ -563,19 +491,28 @@ public class BasePage {
         }
     }
     
-    public void typeAndSelectOption(String inputLocator, String dropdownOptionsLocator, String targetValue, int delayMillis) {
+    public void typeAndSelectOption(String inputLocator, String textValue, int delayMillis) {
         try {
             WebElement input = waitForElement(inputLocator);
             input.clear();
-            boolean found = false;
 
-            for (char ch : targetValue.toCharArray()) {
-                input.sendKeys(String.valueOf(ch));
+            boolean found = false;
+            int index = 0;
+
+            while (index < textValue.length()) {
+                int end = Math.min(index + 2, textValue.length());
+                String partial = textValue.substring(index, end);
+                input.sendKeys(partial);
+                index = end;
+
                 Thread.sleep(delayMillis);
 
-                java.util.List<WebElement> options = driver.findElements(getLocator(dropdownOptionsLocator));
+                // XPath to find a matching dropdown option
+                String xpath = "//*[starts-with(@class, 'oj-dynamic-table') and contains(text(), '" + textValue + "')]";
+                List<WebElement> options = driver.findElements(By.xpath(xpath));
+
                 for (WebElement option : options) {
-                    if (option.getText().trim().equalsIgnoreCase(targetValue.trim())) {
+                    if (option.getText().trim().equalsIgnoreCase(textValue.trim())) {
                         scrollToWebElement(option);
                         option.click();
                         Logger.info("✅ Option selected: " + option.getText());
@@ -589,7 +526,7 @@ public class BasePage {
 
             if (!found) {
                 input.sendKeys(Keys.TAB);
-                Logger.info("ℹ️ Option not found. Focus moved away from input.");
+                Logger.info("ℹ️ Option not found. Full string entered. Focus moved away from input.");
             }
 
         } catch (InterruptedException e) {
@@ -600,8 +537,8 @@ public class BasePage {
         }
     }
 
-	public void typeAndSelectOption(String inputLocator, String dropdownOptionsLocator, String targetValue) {
-		 typeAndSelectOption(inputLocator,dropdownOptionsLocator,targetValue, 100);
+	public void typeAndSelectOption(String inputLocator, String textValue) {
+		 typeAndSelectOption(inputLocator,textValue, 100);
 	}
 	
 	public void uploadFile(String fileInputLocator, String filePath) {
