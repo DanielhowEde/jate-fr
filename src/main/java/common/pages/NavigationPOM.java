@@ -30,7 +30,7 @@ public class NavigationPOM extends BasePage {
 			
 			switch (segment.trim()) {
 				case "Home":
-					clickElementByLocator(btnHome);
+					clickElementByLocatorString(btnHome);
 					break;
 				case "My Team":
 					clickNavigationlnk(segment);
@@ -74,12 +74,12 @@ public class NavigationPOM extends BasePage {
 	private void clickNavigationlnk(String text) {
 		String formattedLink = String.format(lnkLocator, text);
 		try {
-			clickElementByLocator(formattedLink);
+			clickElementByLocatorString(formattedLink);
 			
 		}	catch (Exception e) {
 			Logger.debug("Option Not Found: "+ text);
 			formattedLink = String.format(lnkShowMore, text);
-			clickElementByLocator(formattedLink);
+			clickElementByLocatorString(formattedLink);
 		}
 	}
 	

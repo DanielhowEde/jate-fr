@@ -43,7 +43,7 @@ public class DynamicFormFiller extends BasePage {
                         enterTextInField(locator, value);
                         break;
                     case TYPEANDSELECT:
-                    	this.typeAndSelectOption(locator, locator, value);
+                    	this.typeAndSelectOption(locator, value);
                     	break;
                     case DATEPICKER:
                         selectDateFromCalendar(locator, value);
@@ -55,7 +55,7 @@ public class DynamicFormFiller extends BasePage {
                         setCheckboxCheckedState(locator, Boolean.parseBoolean(value));
                         break;
                     case RADIO:
-                        clickElementByLocator(locator);
+                        clickElementByLocatorString(locator);
                         break;
                     default:
                         System.out.println("⚠️ Unknown field type for: " + fieldName);
