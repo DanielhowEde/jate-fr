@@ -494,7 +494,10 @@ public class BasePage {
     public void typeAndSelectOption(String inputLocator, String textValue, int delayMillis) {
         try {
             WebElement input = waitForElement(inputLocator);
+
+            // Clear the input field
             input.clear();
+            input.sendKeys(Keys.chord(Keys.CONTROL, "a"), Keys.DELETE);
 
             boolean found = false;
             int index = 0;
@@ -507,26 +510,23 @@ public class BasePage {
 
                 Thread.sleep(delayMillis);
 
-                // XPath to find a matching dropdown option
-                String xpath = "//*[starts-with(@class, 'oj-dynamic-table') and contains(text(), '" + textValue + "')]";
-                List<WebElement> options = driver.findElements(By.xpath(xpath));
+                // Check if the full dropdown option is now visible
+                String dropdownXPath = "//*[starts-with(@class, 'oj-dynamic-table') and contains(text(), '" + textValue + "')]";
+                List<WebElement> matches = driver.findElements(By.xpath(dropdownXPath));
 
-                for (WebElement option : options) {
-                    if (option.getText().trim().equalsIgnoreCase(textValue.trim())) {
-                        scrollToWebElement(option);
-                        option.click();
-                        Logger.info("✅ Option selected: " + option.getText());
-                        found = true;
-                        break;
-                    }
+                if (!matches.isEmpty()) {
+                    WebElement match = matches.get(0);
+                    scrollToWebElement(match);
+                    match.click();
+                    Logger.info("✅ Option selected: " + match.getText());
+                    found = true;
+                    break;
                 }
-
-                if (found) break;
             }
 
             if (!found) {
                 input.sendKeys(Keys.TAB);
-                Logger.info("ℹ️ Option not found. Full string entered. Focus moved away from input.");
+                Logger.info("ℹ️ Option not found after full input. Focus moved away.");
             }
 
         } catch (InterruptedException e) {
