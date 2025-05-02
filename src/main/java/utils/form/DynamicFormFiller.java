@@ -42,6 +42,9 @@ public class DynamicFormFiller extends BasePage {
                     case TEXTAREA:
                         enterTextInField(locator, value);
                         break;
+                    case TYPEANDSELECT:
+                    	this.typeAndSelectOption(locator, locator, value);
+                    	break;
                     case DATEPICKER:
                         selectDateFromCalendar(locator, value);
                         break;
