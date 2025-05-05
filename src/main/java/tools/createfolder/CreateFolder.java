@@ -2,6 +2,8 @@ package tools.createfolder;
 
 import java.nio.file.Files;
 
+import common.pages.LoginPOM;
+
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.File;
@@ -182,6 +184,8 @@ public class CreateFolder {
             "package stepdefinitions;\n\n" +
             "import io.cucumber.java.en.Given;\n\n" +
             "public class SampleSteps {\n\n" +
+            "WebDriver driver = WebDriverManager.getDriver(); \n\n"+
+            "SamplePOM SamplePage = new SamplePOM(driver); \n\n"+
             "    @Given(\"I print {string}\")\n" +
             "    public void iPrint(String message) {\n" +
             "        System.out.println(\"📢 Step says: \" + message);\n" +

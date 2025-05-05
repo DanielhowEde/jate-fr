@@ -8,7 +8,7 @@ import common.pages.NavigationPOM;
 import static org.junit.Assert.*;
 
 public class LoginAndNavigationSteps {
-    WebDriver driver = WebDriverManager.getDriver("chrome");
+	WebDriver driver = WebDriverManager.getDriver(); 
     LoginPOM loginPage = new LoginPOM(driver);
     NavigationPOM navigationPage = new NavigationPOM(driver);
   	

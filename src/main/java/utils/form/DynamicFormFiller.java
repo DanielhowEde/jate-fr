@@ -55,7 +55,7 @@ public class DynamicFormFiller extends BasePage {
                         setCheckboxCheckedState(locator, Boolean.parseBoolean(value));
                         break;
                     case RADIO:
-                        clickElementByLocatorString(locator);
+                    	selectRadioButton(locator);
                         break;
                     default:
                         System.out.println("⚠️ Unknown field type for: " + fieldName);

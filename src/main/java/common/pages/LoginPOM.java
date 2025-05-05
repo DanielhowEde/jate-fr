@@ -26,7 +26,7 @@ public class LoginPOM extends BasePage {
     }
 
     public void clickLoginButton() {
-        clickElementByLocatorString(loginButton);
+        clickElementBySelector(loginButton);
     }
     
     public void loginAsUser(String userType) {
