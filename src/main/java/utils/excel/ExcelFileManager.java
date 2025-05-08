@@ -226,5 +226,16 @@ public class ExcelFileManager {
         return null;
     }
     
+    public void close() {
+        try {
+            if (workbook != null) {
+                workbook.close();
+                TestLogger.LOGGER.info("✅ Excel workbook closed successfully.");
+            }
+        } catch (IOException e) {
+            TestLogger.LOGGER.error("❌ Failed to close Excel workbook.", e);
+        }
+    }
+    
 }
 
