@@ -25,9 +25,9 @@ public class NavigationPOM extends BasePage {
 		String[] navigationSegment = link.trim().split(",");
 		String btnLocator;
 		String groupNode;
-		
+		int i = 0;
 		for (String segment : navigationSegment) {
-			
+			i++;
 			switch (segment.trim()) {
 				case "Home":
 					clickElementBySelector(btnHome);
@@ -65,8 +65,13 @@ public class NavigationPOM extends BasePage {
 					break;
 					
 				default:
-					clickNavigationlnk(segment);
-
+					try {
+						scrollToIfPresent(segment);
+						clickNavigationlnk(segment);
+					} catch (Exception e){
+						//click the show more group node and click on the element
+				}
+				captureAndAttachScreenshot("Navigation Step " + i);
 			}
 		}
 	}

@@ -172,9 +172,10 @@ run the commands:
  src/main/resources 
  
 
-###The createFolder.java script is used to scaffold a new test module inside the test suite. It creates a clean and consistent structure for each testable application, including:
+### createFolder.java
+- The createFolder.java script is used to scaffold a new test module inside the test suite. It creates a clean and consistent structure for each testable application, including:
 
--Maven project setup
+- Maven project setup
 - Creates Feature folder
 - Creates Step definition stubs
 - Creates Cucumber runner
@@ -187,12 +188,12 @@ Compile the initializer:
 
 
 ```bash
-javac jate-fr\src\main\java\tools\createfolder\CreateFolder.java
+javac -d out jate-fr\src\main\java\tools\createfolder\CreateFolder.java
 ```
 Run it with your desired app name:
 
 ```bash
-java jate-fr\src\main\java\tools\createfolder\CreateFolder <MyAppName>
+java -cp out tools.createfolder.CreateFolder <myAppName>
 ```
 This will create a new directory with a sufix of -tests:
 

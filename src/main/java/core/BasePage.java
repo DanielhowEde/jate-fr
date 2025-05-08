@@ -157,7 +157,7 @@ public class BasePage {
             // Timeout reached without clicking any element
             String errorMsg = "Failed to click any element for locator " + selector 
                               + " after " + timeoutMs + " ms (no clickable element found).";
-            System.out.println(errorMsg);
+            LOGGER.error(errorMsg);
             throw new TimeoutException(errorMsg);
         }
     }
@@ -358,6 +358,15 @@ public class BasePage {
             throw new RuntimeException("❌ Failed to take screenshot: " + screenshotName, e);
         }
     }
+    
+    public void captureAndAttachScreenshot(String note) {
+        String screenshotName = "Manual_" + note.replaceAll("[^a-zA-Z0-9]", "_");
+        String path = captureScreenshot(screenshotName);
+
+        Hooks.getExtentTest()
+            .info("📸 " + note)
+            .addScreenCaptureFromPath("screenshots/" + new File(path).getName());
+    }
 
     public void hoverOnElement(String locator) {
         try {
@@ -428,13 +437,14 @@ public class BasePage {
     public void waitUntilTextAppears(String locator, String expectedText) {
         try {
             wait.until(ExpectedConditions.textToBe(getSelector(locator), expectedText));
-            System.out.println("✅ Expected text appeared: " + expectedText);
+            LOGGER.info("✅ Expected text appeared: " + expectedText);
         } catch (Exception e) {
+        	LOGGER.error("✘ Text did not appear within Expected TimeLimit");
             throw new RuntimeException("❌ Text did not appear: " + expectedText, e);
         }
     }
 
-    public void scrollToElementByLocator(String locator) {
+    public void scrollToSelector(String locator) {
         try {
             WebElement element = waitForSelector(locator);
             ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView(true);", element);
@@ -444,6 +454,17 @@ public class BasePage {
         }
     }
 
+    public void scrollToIfPresent(String locator) {
+        try {
+            WebElement element = driver.findElement(getSelector(locator));
+            if (element != null && !isElementInViewport(element)) {
+                scrollToWebElement(element);
+                Logger.info("✅ Scrolled to element that was off-screen: " + locator);
+            }
+        } catch (NoSuchElementException e) {
+            Logger.warn("⚠️ Element not found for scrolling: " + locator);
+        }
+    }
 
     public void highlightElementBorder(String locator) {
         try {
@@ -782,6 +803,20 @@ public class BasePage {
 	        if (isElementVisible(el)) return el;
 	    }
 	    return null;
+	}
+	
+	private boolean isElementInViewport(WebElement element) {
+	    JavascriptExecutor js = (JavascriptExecutor) driver;
+	    String script = """
+	        var rect = arguments[0].getBoundingClientRect();
+	        return (
+	            rect.top >= 0 &&
+	            rect.left >= 0 &&
+	            rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+	            rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+	        );
+	    """;
+	    return (Boolean) js.executeScript(script, element);
 	}
 }
 

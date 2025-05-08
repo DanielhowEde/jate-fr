@@ -1,9 +1,6 @@
 package tools.createfolder;
 
 import java.nio.file.Files;
-
-import common.pages.LoginPOM;
-
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.File;
@@ -84,31 +81,65 @@ public class CreateFolder {
 		return 
 			"package pages;\n" +
 			"\n" +
-			"import core.BasePage;\n"+
+			"import core.BasePage;\n "+ 
 			"import core.Hooks;\n"+
 			"import org.openqa.selenium.WebDriver;\n"+
 			"import utils.context.ScenarioContext;\n"+
+			"import utils.context.ContextManager;\n"+
 			"import utils.excel.ExcelFileManager;\n"+
 			"import utils.form.DynamicFormFiller;\n"+
 			"import utils.form.FieldConfig;\n"+
 			"import utils.form.FormFieldType;\n"+
-			"import java.util.List;\n"+
 			"import java.util.Map;\n"+
-			"import static org.junit.Assert.assertTrue; \n\n"+
-			"public class Sample extends BasePage { \n" +
+			"import java.util.HashMap; \n\n"+
+			"public class SamplePOM extends BasePage { \n" +
 			"    // ───── Locators ─────\n" +
 			"    private final String txtSample = \"//*[@id='Sample']\"; \n\n" +
 			"    // ───── Dependencies ─────\n" + 
 			"    private final WebDriver driver;\n"+
 			"    private final DynamicFormFiller formFiller;\n"+
 			"    private final ScenarioContext context = Hooks.getScenarioContext();\n\n" +
+			"    public SamplePOM(WebDriver driver) {\n"+
+			"        super(driver); // ✅ must be first\n"+
+			"        this.driver = driver;\n\n        // You can initialize your mapping logic here\n"+
+			"        Map<String, FieldConfig> map = new HashMap<>();\n"+
+			"       map.put(\"SampleField\", new FieldConfig(txtSample, FormFieldType.TEXTBOX));\r\n"+
+			"       this.formFiller = new DynamicFormFiller(driver, map);\n\n"+
+			"        // Validate spreadsheet presence"+
+			"        if (!ContextManager.contains(\"spreadsheet\")) {\n"+
+			"            throw new RuntimeException(\"❌ Spreadsheet path is missing in ContextManager\");\n\n"+
+			"        }\r\n    }"+
 			"    // ───── Public Actions ───── \n" +
 			"    public void fillAddressFormFromSpreadsheetRow(int index) {\n" +
-			"        Map<String, String> row = getSpreadsheetRow(index);\n" +
-			"        System.out.println(\"▶️ Filling address form from row \" + index + \": \" + row);\n" +
-			"        formFiller.fill(row);\n" +
-			"    } /n}"
-				;
+			"        Map<String, String> row = getRowByIteration(index);\n" +
+			"        if (row == null) {\n"+
+			"            TestLogger.LOGGER.warn(\"⚠️ No valid data row found for iteration \" + index);\n"+
+			"            return;\r\n"+
+			"        }\n\n" +
+			"        TestLogger.LOGGER.info(\"▶️ Filling form from row: \" + row)\n" +
+			"        formFiller.fill(row);"+
+			"    } \n\n}"+
+			"private ExcelFileManager getSheet(String sheetName) { \n"+
+			"        Map<String, ExcelFileManager> sheetCache;\n\n"+
+			"        if (!ContextManager.contains(\"sheetCache\")) {\n"+
+			"            sheetCache = new HashMap<>();\n"+
+			"            ContextManager.put(\"sheetCache\", sheetCache);\n"+
+			"        } else {\n"+
+			"            sheetCache = (Map<String, ExcelFileManager>) ContextManager.get(\"sheetCache\");\n"+
+			"        }\n\n"+
+			"        if (!sheetCache.containsKey(sheetName)) {"+
+			"            String spreadsheetPath = (String) ContextManager.get(\"spreadsheet\");\n"+
+			"            ExcelFileManager excel = new ExcelFileManager(spreadsheetPath, sheetName);\n"+
+			"            sheetCache.put(sheetName, excel);\n"+
+			"        }\n\n        return sheetCache.get(sheetName);\n    }\n\n"+
+			"    private Map<String, String> getRowByIteration(int iteration) {\n"+
+			"       ExcelFileManager excel = getSheet(\"SampleData\");\n"+
+			"        if (context.contains(\"ParentIteration\")) {\n"+
+			"            Integer parentIteration = Integer.valueOf(context.get(\"ParentIteration\").toString());\n"+
+			"            return excel.getRowByIteration(iteration, parentIteration);\n"+
+			"        } else {\n"+
+			"            return excel.getRowByIteration(iteration); // overloaded version\n"+
+			"        }\n    }\n}\n";
 	}
 
 	// Engine POM
