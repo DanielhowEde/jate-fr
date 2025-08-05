@@ -1,5 +1,7 @@
 package utils.context;
 
+import java.util.Set;
+
 public class ContextManager {
 
     private static ScenarioContext scenarioContext;
@@ -40,5 +42,17 @@ public class ContextManager {
     
     public static Object getOrDefault(String key, Object defaultValue) {
         return contains(key) ? get(key) : defaultValue;
+    }
+    
+    public static boolean containsKey(String key) {
+		return scenarioContext.contains(key);
+    }
+    
+    public static Set<String> getAllKeys(){
+    	if (StoryContext.isStoryMode()) {
+    		return StoryContext.getAllKeys();
+    	} else {
+    		return scenarioContext.getAllKeys();
+    	}
     }
 }

@@ -2,6 +2,7 @@ package utils.context;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class StoryContext {
     private static final ThreadLocal<Map<String, Object>> storyData = ThreadLocal.withInitial(HashMap::new);
@@ -26,5 +27,9 @@ public class StoryContext {
 
     public static boolean isStoryMode() {
         return storyMode.get();
+    }
+    
+    public static Set<String> getAllKeys() {
+        return storyData.get().keySet();
     }
 }

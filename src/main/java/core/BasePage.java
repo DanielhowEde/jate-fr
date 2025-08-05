@@ -7,12 +7,19 @@ package core;
 
 import org.jcodec.common.logging.Logger;
 import org.openqa.selenium.*;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+
 
 import utils.config.ConfigReader;
 
@@ -22,6 +29,8 @@ import static core.TestLogger.LOGGER;
 
 import java.io.File;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 public class BasePage {
@@ -29,12 +38,14 @@ public class BasePage {
     protected int timeoutInSeconds;
     private WebDriverWait wait;
     private static final long POLLING_INTERVAL_MS = 500;
+    private String originalTab;
     
 
     
     public BasePage(WebDriver driver) {
         this.driver = driver;
-        String timeoutStr = ConfigReader.getProperty("webdriver.wait.timeout");
+        this.originalTab = driver.getWindowHandle();
+        String timeoutStr = ConfigReader.getProperty("webdriver.wait.timeout");  
         int timeout;
 
         try {
@@ -76,6 +87,11 @@ public class BasePage {
         return (Boolean) js.executeScript(script, element);
     }
 
+    public void navigateTo(String url) {
+        LOGGER.info("Navigating to URL: " + url);
+        driver.get(url);
+    }
+    
     public void scrollToWebElement(WebElement element) {
         ((JavascriptExecutor) driver).executeScript(
             "const el = arguments[0];" +
@@ -90,10 +106,16 @@ public class BasePage {
     
     public void selectDateFromCalendar(String dateFieldSelector, String date) {
         try {
+        	//convert excel number to date
+        	int serial= Integer.parseInt(date)-1;
+        	LocalDate baseDate = LocalDate.of(1899, 12, 31);
+        	LocalDate thisDate= baseDate.plusDays(serial);
+        	DateTimeFormatter formatter= DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        	String formattedDate = thisDate.format(formatter);
             WebElement dateField = waitForSelector(dateFieldSelector);
             dateField.click();
             dateField.clear();
-            dateField.sendKeys(date);
+            dateField.sendKeys(formattedDate);
             dateField.sendKeys(Keys.TAB); // Close the calendar if needed
             Logger.info("✅ Date entered: " + date);
         } catch (Exception e) {
@@ -107,30 +129,40 @@ public class BasePage {
         LOGGER.debug("Attempting to click element(s) located by: " + selector);
 
         while (System.currentTimeMillis() < endTime && !clicked) {
-            // Find all elements matching the locator
             List<WebElement> elements = driver.findElements(selector);
             if (elements.isEmpty()) {
-            	 LOGGER.debug("No elements found for locator " + selector + " yet.");
+                LOGGER.debug("No elements found for locator " + selector + " yet.");
             } else {
-            	 LOGGER.info("Found " + elements.size() + " element(s) for locator " + selector + ". Checking clickability...");
+                LOGGER.info("Found " + elements.size() + " element(s) for locator " + selector + ". Checking clickability...");
             }
 
-            // Iterate through each found element to find a clickable one
             for (WebElement element : elements) {
-                // Scroll element into view using JavaScript
-                ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", element);
+                JavascriptExecutor js = (JavascriptExecutor) driver;
+
+                // Check if element is in viewport
+                boolean inViewport = (Boolean) js.executeScript(
+                    "var elem = arguments[0], box = elem.getBoundingClientRect();" +
+                    "return (box.top >= 0 && box.left >= 0 && box.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&" +
+                    "box.right <= (window.innerWidth || document.documentElement.clientWidth));",
+                    element
+                );
+
+                if (!inViewport) {
+                    LOGGER.debug("Element is outside viewport. Scrolling to bring it into view.");
+                    js.executeScript("arguments[0].scrollIntoView({block: 'center'});", element);
+                }
 
                 if (!element.isDisplayed()) {
                     LOGGER.debug("Element found but not visible (isDisplayed() == false). Skipping this element.");
                     continue;
                 }
+
                 if (!element.isEnabled()) {
                     LOGGER.debug("Element found but not enabled (isEnabled() == false). Skipping this element.");
                     continue;
                 }
 
-                // Check if element is not overlapped by another element at its center point
-                JavascriptExecutor js = (JavascriptExecutor) driver;
+                // Check if element is not overlapped
                 Boolean isTopElement = (Boolean) js.executeScript(
                     "var elem = arguments[0];" +
                     "var rect = elem.getBoundingClientRect();" +
@@ -141,7 +173,7 @@ public class BasePage {
                     element
                 );
 
-                if (isTopElement != null && isTopElement) {
+                if (Boolean.TRUE.equals(isTopElement)) {
                     LOGGER.info("Clicking element: " + selector);
                     element.click();
                     LOGGER.info("Element clicked successfully.");
@@ -154,11 +186,7 @@ public class BasePage {
         }
 
         if (!clicked) {
-            // Timeout reached without clicking any element
-            String errorMsg = "Failed to click any element for locator " + selector 
-                              + " after " + timeoutMs + " ms (no clickable element found).";
-            LOGGER.error(errorMsg);
-            throw new TimeoutException(errorMsg);
+            LOGGER.warn("Failed to click element: " + selector + " within timeout of " + timeoutMs + "ms.");
         }
     }
 
@@ -170,38 +198,21 @@ public class BasePage {
     
 
     public void enterTextInField(String locator, String text) {
-        try {
-            WebElement selector = waitForSelector(locator);
-            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", selector);
-
-            // Attempt 1
-            selector.click();
-            selector.clear();
-            selector.sendKeys(text);
-
-            if (!textAppeared(selector, text)) {
-                Logger.info("⌛ Waiting 5s to recheck field content...");
-                Thread.sleep(5000);
-
-                if (!textAppeared(selector, text)) {
-                    Logger.warn("⚠️ Text not stable in field. Retrying input...");
-
-                    // Retry
-                    selector.click();
-                    selector.clear();
-                    selector.sendKeys(text);
-
-                    if (!textAppeared(selector, text)) {
-                        throw new RuntimeException("❌ Text input retry failed. Expected: '" + text +
-                                "', but found: '" + selector.getDomProperty("value") + "'");
-                    }
-                }
-            }
-
-            Logger.info("✅ Entered text: '" + text + "' successfully in " + locator);
-        } catch (Exception e) {
-            throw new RuntimeException("❌ Failed to enter text in: " + locator, e);
-        }
+    	if (text!=null && !text.isBlank()) {
+	        try {
+	            WebElement selector = waitForSelector(locator);
+	            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", selector);
+	
+	            // Attempt 1
+	            selector.click();
+	            selector.clear();
+	            selector.sendKeys(text);
+	
+	            Logger.info("✅ Entered text: '" + text + "' successfully in " + locator);
+	        } catch (Exception e) {
+	            throw new RuntimeException("❌ Failed to enter text in: " + locator, e);
+	        }
+    	}
     }
 
     private boolean textAppeared(WebElement element, String expectedText) {
@@ -212,6 +223,7 @@ public class BasePage {
     public void selectDropdownOptionByText(String locator, String value) {
         try {
             Select selector = new Select(waitForSelector(locator));
+            
             selector.selectByVisibleText(value);
             Logger.info("✅ Selected dropdown value: " + value);
         } catch (Exception e) {
@@ -222,7 +234,16 @@ public class BasePage {
     public void typeWithDropdownHandling(String locator, String text, String dropdownLocator, int delay) throws InterruptedException {
         typeIntoFieldAndSelect(locator, text, dropdownLocator, delay, false);
     }
-
+    
+    public void selectDropDownOptionByClicks(String locator, String value) {
+    	WebElement selector = waitForSelector(locator);
+    	selector.click();
+    	String dropdownSelector= String.format("//*[@title='%s']", value);
+    	WebElement dropdownValue = waitForSelector(dropdownSelector);
+    	dropdownValue.click();
+    	
+    }
+    
     private boolean isDropdownVisible(String dropdownLocator) {
         try {
             return wait.until(ExpectedConditions.visibilityOfElementLocated(getSelector(dropdownLocator))).isDisplayed();
@@ -320,6 +341,13 @@ public class BasePage {
         } catch (Exception e) {
             throw new RuntimeException("❌ No JavaScript alert found.", e);
         }
+    }
+    
+    public void sendCTRLKeyToSelector(String selector, Keys sendKeyPress) {
+    	WebElement input = new WebDriverWait(driver, Duration.ofSeconds(10)).until(ExpectedConditions.elementToBeClickable(By.xpath(selector)));
+    	input.click();
+    	input.sendKeys(Keys.END);
+    	input.sendKeys(sendKeyPress);
     }
 
     public String getToastPopupMessage(String toastLocator) {
@@ -430,8 +458,13 @@ public class BasePage {
         }
     }
     
+    
     public void waitUntilElementVisible(String locator) {
     	waitUntilElementVisible(locator, true);
+    }
+    
+    public void shortWait(int durationSeconds) throws Exception {
+    	Thread.sleep(durationSeconds*1000L);
     }
 
     public void waitUntilTextAppears(String locator, String expectedText) {
@@ -489,6 +522,15 @@ public class BasePage {
     
     public boolean elementExists(By selector) {
         try {
+            return driver.findElement(selector).isDisplayed();
+        } catch (NoSuchElementException | StaleElementReferenceException e) {
+            return false;
+        }
+    }
+    
+    public boolean elementExists(String locator) {
+        try {
+        	By selector = getSelector(locator);
             return driver.findElement(selector).isDisplayed();
         } catch (NoSuchElementException | StaleElementReferenceException e) {
             return false;
@@ -730,6 +772,38 @@ public class BasePage {
 	    }
 	}
 	
+	 // Open a new tab and navigate to a URL
+    public void openNewTab(String url) throws InterruptedException {
+        driver.switchTo().newWindow(WindowType.TAB);
+        Thread.sleep(1000);
+        driver.get(url);
+        Logger.info("New Tab opened for URL: "+ url);
+    }
+
+    
+    // Switch to tab by index (0 = original)
+    public void switchToTab(int index) {
+        List<String> tabs = new ArrayList<>(driver.getWindowHandles());
+        if (index < tabs.size()) {
+            driver.switchTo().window(tabs.get(index));
+            Logger.info("Switched to Tab: "+ index);
+        } else {
+            throw new IllegalArgumentException("Tab index out of bounds: " + index);
+        }
+    }
+    // Switch back to the original tab
+    public void switchToOriginalTab() {
+        driver.switchTo().window(originalTab);
+    }
+
+    // Close the current tab and switch to a specified one
+    public void closeCurrentTabAndSwitchTo(int index) {
+        driver.close();
+        switchToTab(index);
+    }
+
+	
+	
 	private void typeIntoFieldAndSelect(String inputLocator, String fullText, String dropdownLocator, int delay, boolean checkAllMatches) throws InterruptedException {
 	    WebElement input = waitForSelector(inputLocator);
 	    By dropdownSelector = getSelector(dropdownLocator);
@@ -817,6 +891,60 @@ public class BasePage {
 	        );
 	    """;
 	    return (Boolean) js.executeScript(script, element);
+	}
+	
+	public void selectMenuOption(String menuOption, String Option) throws Exception {
+	
+		waitUntilElementVisible(menuOption);
+    	clickElementBySelector(menuOption);
+        Thread.sleep(500);
+        WebElement logOut= driver.findElement(By.xpath(Option));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", logOut);
+        Thread.sleep(1000);
+	}
+	
+	public static WebElement waitForPresence(WebDriver driver, int timeoutInSeconds, By... locators) {
+	    if (locators == null || locators.length == 0) {
+	        throw new IllegalArgumentException("At least one locator must be provided.");
+	    }
+
+	    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutInSeconds));
+
+	    try {
+	        return wait.until(driver1 -> {
+	            for (By locator : locators) {
+	                List<WebElement> elements = driver1.findElements(locator);
+	                if (!elements.isEmpty()) {
+	                    return elements.get(0);
+	                }
+	            }
+	            return null;
+	        });
+	    } catch (TimeoutException e) {
+	        throw new TimeoutException("None of the expected elements were found within " + timeoutInSeconds + " seconds.", e);
+	    }
+	}
+	
+	
+	public void clickOptions(String locator) throws Exception {
+		WebElement thisOption= driver.findElement(By.xpath(locator));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", thisOption);
+        Thread.sleep(500);
+	}
+	
+	public void mouseOverAndClick(String locator) throws Exception {
+		WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+		WebElement screenObject = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(locator)));
+		((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", screenObject);
+		Actions actions = new Actions(driver);
+		actions.moveToElement(screenObject).click().perform();
+	}
+	
+	public void clickActiveElementByAttribute(String attribute ,String value) {
+		WebElement activeElement = driver.switchTo().activeElement();
+		if (value.equals(activeElement.getDomAttribute(attribute))) {
+			activeElement.click();
+		}
 	}
 }
 

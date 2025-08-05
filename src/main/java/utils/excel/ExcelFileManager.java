@@ -178,52 +178,29 @@ public class ExcelFileManager {
         }
     }
     
-    public Map<String, String> getRowByIteration(int iteration) {
+    public Map<String, String> getRowByIteration(String iteration) {
         return getRowByIteration(iteration, null);
     }
     
-    public Map<String, String> getRowByIteration(int iteration, Integer parentIteration) {
-        if (allRows == null || allRows.isEmpty()) {
-            TestLogger.LOGGER.info("📌 No data found in sheet: " + this.sheetName);
-            return null;
-        }
-
+    public Map<String, String> getRowByIteration(String id, String parentId) {
         for (Map<String, String> row : allRows) {
-            String rowIterationRaw = row.getOrDefault("Iteration", "").trim();
+            String rowId = row.getOrDefault("ID", "").trim();
+            String rowParentId = row.getOrDefault("ParentID", "").trim();
 
-            if (rowIterationRaw.isEmpty() || !rowIterationRaw.matches("\\d+")) {
-                continue; // Skip rows with invalid iteration
-            }
+            boolean idMatches = rowId.equals(id);
+            boolean parentMatches = (parentId == null && rowParentId.isEmpty()) || rowParentId.equals(parentId);
 
-            String rowParentIteration = row.getOrDefault("ParentIteration", "").trim();
-
-            boolean matchesIteration = String.valueOf(iteration).equals(rowIterationRaw);
-            boolean hasParentIterationColumn = row.containsKey("ParentIteration");
-            boolean matchesParent = (
-            	    parentIteration == null ||                            // caller doesn't care
-            	    (!hasParentIterationColumn) ||                        // sheet doesn't have the column
-            	    String.valueOf(parentIteration).equals(rowParentIteration) // exact match
-            	);
-
-            if (matchesIteration && matchesParent) {
-                // Check if all other fields are blank
-                boolean onlyIterationFields = row.entrySet().stream()
-                    .filter(e -> !e.getKey().equals("Iteration") && !e.getKey().equals("ParentIteration"))
-                    .allMatch(e -> e.getValue() == null || e.getValue().trim().isEmpty());
-
-                if (onlyIterationFields) {
-                    TestLogger.LOGGER.info("📌 Row matched by Iteration/ParentIteration but has no data — skipping");
-                    return null;
-                }
-
+            if (idMatches && parentMatches) {
                 return row;
             }
         }
 
-        TestLogger.LOGGER.info("📌 No matching row found in sheet: " + this.sheetName +
-                " for Iteration: " + iteration +
-                (parentIteration != null ? " and ParentIteration: " + parentIteration : ""));
-        return null;
+        TestLogger.LOGGER.warn("❌ No matching row found for ID='" + id + "' and ParentID='" + parentId + "'");
+        return Collections.emptyMap();
+    }
+
+    public Map<String, String> getRowByIteration(int id, Integer parentId) {
+        return getRowByIteration(String.valueOf(id), parentId == null ? null : String.valueOf(parentId));
     }
     
     public void close() {

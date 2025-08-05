@@ -21,6 +21,11 @@ public class LoginAndNavigationSteps {
     public void enterUsername(String user){
     	loginPage.enterUsername(user);
     }
+	
+	@Given("I login to site as {string} user")
+	public void loginToTriage(String user) throws Exception {
+		loginPage.loginToSite(user);
+	}
     
     @Given("I enter {string} into the password field")
     public void enterPassword(String user){
@@ -49,10 +54,21 @@ public class LoginAndNavigationSteps {
         assertFalse("Home page not loaded", actualStatus);
     }
     
+    @Given("Login to Outlook as {string}")
+    public void LoginToOutlook(String userType) {
+    	loginPage.LoginToOutlook(userType);
+    }
+    
     
     @Given("I navigate to {string}")
     public void navigateToPage(String link) {
     	navigationPage.navigateTo(link);
     }
+	
+    @Then("the user logs out")
+    public void logoutStep() throws Exception {
+	loginPage.logOut();
+    }    
+
 }
 

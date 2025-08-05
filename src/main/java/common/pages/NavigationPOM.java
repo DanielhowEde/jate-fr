@@ -8,7 +8,12 @@ import org.openqa.selenium.WebDriver;
 
 public class NavigationPOM extends BasePage {
 
-	public static String btnHome = "//a[@title='Home']";
+	public static String btnHome = "//a[text()='Home']";
+	public static String btnOpenCases = "//a[text()='Open Cases']";
+	public static String btnClosedCases = "//a[text()='Closed Cases']";
+	public static String btnChangeRequests= "//a[text()='Change Requests']";
+	public static String btnKeyPerformaceInd = "//a[text()='Key Performance Indicators']";
+	public static String btnSearch = "//button[@title='Expand search']";
 	public static String lnkShowMore = "//a[@id='%s' and text()='Show More']";
 	public static String lnkLocator = "//*[text()='%s']";
 	
@@ -18,63 +23,44 @@ public class NavigationPOM extends BasePage {
 		// TODO Auto-generated constructor stub
 	}
 
-
+/*	public void NavigateToTriage() {
+		try {
+			wait for 
+		}
+		if ()
+	}*/
 
 	public void navigateTo(String link) {
 		
-		String[] navigationSegment = link.trim().split(",");
-		String btnLocator;
-		String groupNode;
-		int i = 0;
-		for (String segment : navigationSegment) {
-			i++;
-			switch (segment.trim()) {
-				case "Home":
-					clickElementBySelector(btnHome);
-					break;
-				case "My Team":
-					clickNavigationlnk(segment);
-					break;
-				case "Me":
-					clickNavigationlnk(segment);
-					break;
-				case "Procurement":
-					clickNavigationlnk(segment);
-					break;
-				case "My Client Groups":
-					groupNode="showmore_groupNode_workforce_management";
-					clickNavigationlnk(segment);
-					break;
-				case "Help Desk":
-					clickNavigationlnk(segment);
-					break;
-				case "Product Management":
-					clickNavigationlnk(segment);
-					break;
-				case "Benefits Administration":
-					clickNavigationlnk(segment);
-					break;
-				case "Field Service":
-					clickNavigationlnk(segment);
-					break;
-				case "Knowledge":
-					clickNavigationlnk(segment);
-					break;
-				case "Supply Chain Planning":
-					clickNavigationlnk(segment);
-					break;
-					
-				default:
-					try {
-						scrollToIfPresent(segment);
-						clickNavigationlnk(segment);
-					} catch (Exception e){
-						//click the show more group node and click on the element
-				}
-				captureAndAttachScreenshot("Navigation Step " + i);
+		switch (link.toLowerCase()) {
+			case "home":
+				clickElementBySelector(btnHome);
+				break;
+			case "closed cases":
+				clickElementBySelector(btnClosedCases);
+				break;
+			case "open cases":
+				clickElementBySelector(btnOpenCases);
+				break;
+			case "change requests":
+				clickElementBySelector(btnChangeRequests);
+				break;
+			case "search":
+				clickElementBySelector(btnSearch);
+				break;
+				
+			case "key performance indicators":
+				clickElementBySelector(btnKeyPerformaceInd);
+				
+				break;
+			default:
+				System.out.println("Unknown Function: "+ link);
+				break;//click the show more group node and click on the element
 			}
-		}
+			
+		captureAndAttachScreenshot("Navigated to " + link);
 	}
+		
 	
 	private void clickNavigationlnk(String text) {
 		String formattedLink = String.format(lnkLocator, text);

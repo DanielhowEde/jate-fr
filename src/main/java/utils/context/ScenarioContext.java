@@ -2,6 +2,7 @@ package utils.context;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class ScenarioContext {
     private Map<String, Object> data;
@@ -20,5 +21,9 @@ public class ScenarioContext {
 
     public boolean contains(String key) {
         return data.containsKey(key);
+    }
+    
+    public Set<String> getAllKeys(){
+    	return data.keySet();
     }
 }
