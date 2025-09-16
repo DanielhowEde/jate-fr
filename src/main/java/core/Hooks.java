@@ -176,6 +176,7 @@ public class Hooks {
         } catch (Exception e) {
             logger.log(Level.SEVERE, "❌ Failed to quit browser: " + e.getMessage(), e);
         }
+	ExcelAccess.closeAll();
     }
 
     @AfterAll
