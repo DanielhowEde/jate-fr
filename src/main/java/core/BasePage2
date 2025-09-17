@@ -1,0 +1,311 @@
+package package core;
+
+import org.openqa.selenium.*;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.*;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+public class BasePage {
+    protected final WebDriver driver;
+    protected final WebDriverWait wait;
+    protected final Actions actions;
+    protected final JavascriptExecutor js;
+
+    // Modal + iFrame context
+    protected WebElement currentModal = null;
+    protected WebElement currentFrameRoot = null;
+
+    public BasePage(WebDriver driver) {
+        this.driver = driver;
+        this.wait = new WebDriverWait(driver, Duration.ofSeconds(20));
+        this.actions = new Actions(driver);
+        this.js = (JavascriptExecutor) driver;
+    }
+
+    /* ------------------------ Locator Handling ------------------------ */
+
+    /**
+     * Accepts:
+     *  - "css:div.btn.primary"
+     *  - "xpath://*[@title='Save']"
+     *  - "id:username", "name:q", "class:btn-primary", "tag:button", "link:Click me"
+     *  - If starts with "//" → xpath; otherwise default "css:"
+     */
+    protected By getSelector(String locator) {
+        if (locator == null || locator.isBlank()) {
+            throw new IllegalArgumentException("Locator cannot be null/blank");
+        }
+        String l = locator.trim();
+
+        if (l.startsWith("xpath:")) return By.xpath(l.substring(6));
+        if (l.startsWith("css:"))   return By.cssSelector(l.substring(4));
+        if (l.startsWith("id:"))    return By.id(l.substring(3));
+        if (l.startsWith("name:"))  return By.name(l.substring(5));
+        if (l.startsWith("class:")) return By.className(l.substring(6));
+        if (l.startsWith("tag:"))   return By.tagName(l.substring(4));
+        if (l.startsWith("link:"))  return By.linkText(l.substring(5));
+
+        if (l.startsWith("//"))     return By.xpath(l); // bare xpath
+        return By.cssSelector(l);                      // bare css
+    }
+
+    /* ------------------------ Core Find/Wait ------------------------ */
+
+    /** Find *visible* element; tries modal scope first if focused. */
+    protected WebElement findVisible(String locator) {
+        By by = getSelector(locator);
+        waitForPageReady();
+
+        List<WebElement> pool = scopedFindElements(by);
+        List<WebElement> visible = pool.stream().filter(this::isDisplayedSafe).collect(Collectors.toList());
+
+        if (!visible.isEmpty()) return visible.get(0);
+
+        // As a fallback, wait for visibility in the right scope
+        return wait.until(d -> {
+            List<WebElement> candidates = scopedFindElements(by).stream()
+                    .filter(this::isDisplayedSafe)
+                    .collect(Collectors.toList());
+            return candidates.isEmpty() ? null : candidates.get(0);
+        });
+    }
+
+    /** Find *all* elements in current scope (modal if present, else document). */
+    protected List<WebElement> scopedFindElements(By by) {
+        if (currentModal != null && isDisplayedSafe(currentModal)) {
+            try { return currentModal.findElements(by); } catch (StaleElementReferenceException ignore) {}
+        }
+        return driver.findElements(by);
+    }
+
+    protected boolean isDisplayedSafe(WebElement e) {
+        try { return e != null && e.isDisplayed(); } catch (Throwable t) { return false; }
+    }
+
+    protected WebElement waitClickable(WebElement e) {
+        return wait.until(ExpectedConditions.elementToBeClickable(e));
+    }
+
+    protected void waitForVisible(String locator) {
+        By by = getSelector(locator);
+        wait.until((Function<WebDriver, Boolean>) d ->
+                scopedFindElements(by).stream().anyMatch(this::isDisplayedSafe));
+    }
+
+    /* ------------------------ Navigation & Page State ------------------------ */
+
+    public void goTo(String url) {
+        driver.navigate().to(url);
+        waitForPageReady();
+    }
+
+    public void waitForPageReady() {
+        try {
+            wait.until(d -> "complete".equals(js.executeScript("return document.readyState")));
+            // If jQuery present, wait for idle
+            try {
+                wait.until(d -> {
+                    Object jq = js.executeScript("return window.jQuery ? jQuery.active : 0");
+                    return jq instanceof Long ? ((Long) jq) == 0L : true;
+                });
+            } catch (Throwable ignore) {}
+        } catch (TimeoutException ignored) {}
+    }
+
+    /* ------------------------ Interactions (Actions-first) ------------------------ */
+
+    /** Move into view (natural) then click with Actions; retries with JS as last resort. */
+    public void click(String locator) {
+        WebElement el = findVisible(locator);
+        ensureInView(el);
+        try {
+            waitClickable(el);
+            actions.moveToElement(el).pause(Duration.ofMillis(60)).click().perform();
+        } catch (Throwable t) {
+            // tiny offset click fallback
+            try {
+                actions.moveToElement(el, 1, 1).pause(Duration.ofMillis(30)).click().perform();
+            } catch (Throwable t2) {
+                // JS ultimate fallback
+                js.executeScript("arguments[0].click();", el);
+            }
+        }
+    }
+
+    /** Click the first *visible* match among a potentially large set. */
+    public void clickFirstVisible(String locator) {
+        By by = getSelector(locator);
+        WebElement el = scopedFindElements(by).stream()
+                .filter(this::isDisplayedSafe)
+                .findFirst()
+                .orElseThrow(() -> new NoSuchElementException("No visible element for: " + locator));
+        ensureInView(el);
+        actions.moveToElement(el).click().perform();
+    }
+
+    /** Hover then click (useful for menus). */
+    public void hoverAndClick(String locator) {
+        WebElement el = findVisible(locator);
+        ensureInView(el);
+        actions.moveToElement(el).pause(Duration.ofMillis(120)).click().perform();
+    }
+
+    /** Robust clear & type using Actions (Ctrl+A, Delete) then sendKeys. */
+    public void type(String locator, String text) {
+        WebElement field = findVisible(locator);
+        ensureInView(field);
+        waitClickable(field);
+        actions.moveToElement(field).click()
+                .keyDown(Keys.CONTROL).sendKeys("a").keyUp(Keys.CONTROL)
+                .sendKeys(Keys.DELETE)
+                .sendKeys(text == null ? "" : text)
+                .perform();
+    }
+
+    /** Append text without clearing. */
+    public void append(String locator, String text) {
+        WebElement field = findVisible(locator);
+        ensureInView(field);
+        waitClickable(field);
+        actions.moveToElement(field).click().sendKeys(text == null ? "" : text).perform();
+    }
+
+    /** Press an arbitrary key on a locator. */
+    public void pressKey(String locator, Keys key) {
+        WebElement el = findVisible(locator);
+        ensureInView(el);
+        actions.moveToElement(el).click().sendKeys(key).perform();
+    }
+
+    /* ------------------------ Scrolling ------------------------ */
+
+    /** Scroll element into view; if inside a scrollable modal, scroll that container. */
+    public void ensureInView(WebElement el) {
+        if (el == null) return;
+        try {
+            if (currentModal != null && isDisplayedSafe(currentModal)) {
+                js.executeScript(
+                    "const el=arguments[0],box=arguments[1];" +
+                    "if(!box.contains(el)) return;" +
+                    "const er=el.getBoundingClientRect();" +
+                    "const br=box.getBoundingClientRect();" +
+                    "if(er.top < br.top) box.scrollTop -= (br.top - er.top) + 20;" +
+                    "else if(er.bottom > br.bottom) box.scrollTop += (er.bottom - br.bottom) + 20;", 
+                    el, currentModal
+                );
+            } else {
+                js.executeScript("arguments[0].scrollIntoView({block:'center',inline:'nearest'});", el);
+            }
+        } catch (Throwable ignore) {}
+    }
+
+    /** Nudge scroll by pixels (good for sticky headers). */
+    public void scrollBy(int yPixels) {
+        try { js.executeScript("window.scrollBy(0, arguments[0]);", yPixels); } catch (Throwable ignore) {}
+    }
+
+    /* ------------------------ Dropdown helpers (generic) ------------------------ */
+
+    /** Click an option in a list/dropdown by visible text. Pass the container locator. */
+    public void clickOptionByText(String containerLocator, String text) {
+        WebElement container = findVisible(containerLocator);
+        ensureInView(container);
+        By item = By.xpath(".//*[normalize-space(text())='" + escapeQuotes(text) + "']");
+        WebElement option = container.findElements(item).stream()
+                .filter(this::isDisplayedSafe)
+                .findFirst()
+                .orElseThrow(() -> new NoSuchElementException("Option not found: " + text));
+        ensureInView(option);
+        actions.moveToElement(option).click().perform();
+    }
+
+    protected String escapeQuotes(String s) {
+        if (s.contains("'") && s.contains("\"")) {
+            // concat: 'a' + "\"" + 'b'
+            return s.replace("\"", "\\\"");
+        }
+        if (s.contains("'")) return "\"" + s + "\"";
+        return "'" + s + "'";
+    }
+
+    /* ------------------------ Modal & iFrame ------------------------ */
+
+    /** Focus interactions within a modal; pass the modal root locator. */
+    public void focusOnModal(String modalLocator) {
+        By by = getSelector(modalLocator);
+        currentModal = wait.until(ExpectedConditions.visibilityOfElementLocated(by));
+    }
+
+    /** Clear modal context (resume page scope). */
+    public void clearModal() { currentModal = null; }
+
+    /** Switch to iframe (by locator) and track its root. */
+    public void switchToFrame(String iframeLocator) {
+        By by = getSelector(iframeLocator);
+        WebElement frame = wait.until(ExpectedConditions.frameToBeAvailableAndSwitchToIt(by));
+        currentFrameRoot = frame;
+    }
+
+    /** Switch back to default content and clear frame context. */
+    public void switchToDefaultContent() {
+        driver.switchTo().defaultContent();
+        currentFrameRoot = null;
+    }
+
+    /* ------------------------ Multi-match utilities ------------------------ */
+
+    /** Click all *visible* elements that match a locator (use carefully). */
+    public void clickAllVisible(String locator) {
+        By by = getSelector(locator);
+        List<WebElement> visible = scopedFindElements(by).stream()
+                .filter(this::isDisplayedSafe)
+                .collect(Collectors.toList());
+        if (visible.isEmpty()) throw new NoSuchElementException("No visible matches for: " + locator);
+        for (WebElement e : visible) {
+            ensureInView(e);
+            try {
+                actions.moveToElement(e).pause(Duration.ofMillis(40)).click().perform();
+            } catch (Throwable t) {
+                try { js.executeScript("arguments[0].click();", e); } catch (Throwable ignore) {}
+            }
+        }
+    }
+
+    /* ------------------------ Assertions/Checks ------------------------ */
+
+    public boolean isPresentAndVisible(String locator) {
+        By by = getSelector(locator);
+        return !scopedFindElements(by).stream().filter(this::isDisplayedSafe).collect(Collectors.toList()).isEmpty();
+    }
+
+    public String getText(String locator) {
+        WebElement el = findVisible(locator);
+        ensureInView(el);
+        return el.getText().trim();
+    }
+
+    public String getValue(String locator) {
+        WebElement el = findVisible(locator);
+        ensureInView(el);
+        return el.getAttribute("value");
+    }
+
+    /* ------------------------ Little conveniences ------------------------ */
+
+    public void retry(int times, Runnable step) {
+        RuntimeException last = null;
+        for (int i = 0; i < times; i++) {
+            try { step.run(); return; }
+            catch (RuntimeException e) { last = e; sleep(150); }
+        }
+        if (last != null) throw last;
+    }
+
+    public void sleep(long ms) {
+        try { Thread.sleep(ms); } catch (InterruptedException ignored) {}
+    }
+}
