@@ -9,13 +9,18 @@ import io.cucumber.java.*;
 import com.aventstack.extentreports.ExtentReports;
 import com.aventstack.extentreports.ExtentTest;
 import com.aventstack.extentreports.reporter.ExtentSparkReporter;
+
+import org.openqa.selenium.Dimension;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 
 import utils.context.ContextManager;
 import utils.context.StoryContext;
+import utils.excel.ExcelFileManager;
 import utils.context.ScenarioContext;
+import utils.createworddocuments.*;
+import common.pages.LoginPOM;
 import io.cucumber.java.Status;
 import listeners.StepLogger;
 
@@ -23,8 +28,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.logging.Level;
@@ -88,7 +93,7 @@ public class Hooks {
     @Before
     public void setup(Scenario scenario) {
         driver = core.WebDriverManager.getDriver();
-        driver.manage().window().maximize();
+        driver.manage().window().setSize(new Dimension(1920, 1080));
         extentTest = extentReports.createTest(scenario.getName());
 
         // 🚀 Pass the scenarioContext to ContextManager so Story/Scenario modes can decide
@@ -101,7 +106,7 @@ public class Hooks {
                 extractSpreadsheetName(scenario);
             }
         }
-
+        BasePage.resetScreeshotCouner();
         logger.info("✅ WebDriver Initialized");
     }
 
@@ -169,17 +174,17 @@ public class Hooks {
             } else {
                 extentTest.fail(message);
             }
+            logoutIfNeeded();
         }
-
         try {
             core.WebDriverManager.quitDriver();
         } catch (Exception e) {
             logger.log(Level.SEVERE, "❌ Failed to quit browser: " + e.getMessage(), e);
         }
-	ExcelAccess.closeAll();
     }
 
-    @AfterAll
+
+	@AfterAll
     public static void flushReports() {
         extentReports.flush();
         logger.info("Extent Reports Generated: target/ExtentReport.html");
@@ -198,10 +203,9 @@ public class Hooks {
      // Convert HTML to Word
         try {
             String htmlPath = reportDir + "/"+ reportTitleFromConfig + "Report.html";
-            String screenshotsDir = reportDir + "/screenshots";
-            String outputDocx = reportDir + "/" + reportTitleFromConfig.replaceAll("[^a-zA-Z0-9]", "_") + "_Report.docx";
-
-            utils.createworddocuments.CreateWordDocuments.generateWordFromHtml(htmlPath, screenshotsDir, outputDocx, reportNameFromConfig );
+            String screenshotsDir = reportDir;
+            String outputDocx = reportDir + "/" + reportTitleFromConfig.replaceAll("[^a-zA-Z0-9]", "_") + "_Report.pdf";
+            utils.createworddocuments.createpdf.generatePdfFromHtml(htmlPath, screenshotsDir, outputDocx);
             logger.info("📄 Word document created at: " + outputDocx);
         } catch (Exception e) {
             logger.log(Level.SEVERE, "❌ Failed to generate Word document: " + e.getMessage(), e);
@@ -311,5 +315,17 @@ public class Hooks {
         return reportDir;
     }
     
+    private void logoutIfNeeded() {
+    try {
+    	WebDriver driver = WebDriverManager.getDriver(); 
+        LoginPOM loginPage = new LoginPOM(driver);
+        loginPage.logOut();
+        System.out.println("🔒 Logout successful.");
+	    } catch (NoSuchElementException e) {
+	        System.out.println("⚠️ Logout element not found, possibly already logged out.");
+	    } catch (Exception e) {
+	        System.out.println("⚠️ Unexpected error during logout: " + e.getMessage());
+	    }
+    }
     
 }

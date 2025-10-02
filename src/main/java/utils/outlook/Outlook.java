@@ -2,7 +2,6 @@ package utils.outlook;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
@@ -26,7 +25,6 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.event.KeyEvent;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -36,7 +34,7 @@ public class Outlook extends BasePage{
 	public static String newEmailButton = "//button[@aria-label='New email']";
 	public static String toField = "//*[@aria-label='To']";
 	public static String subjectField = "//*[@aria-label='Subject']";
-	public static String messageBody = "//*[@aria-label='Message body, press Alt+F10 to exit']";
+	public static String messageBody = "//*[@aria-label='Message body']";
 	public static String sendButton = "//button[@aria-label='Send']";
 	public static String filterButton = "//button[@aria-label='Filter']";
 	public static String attachButton = "//*[@class='ribbon-menu-text' and contains(text(),'Attach')]";
@@ -53,8 +51,6 @@ public class Outlook extends BasePage{
 
 
     public void openOutlookSharedFolder(String sharedFolder) throws Exception {
-        // Open a new tab
-        ((JavascriptExecutor) driver).executeScript("window.open()");
 
         // Navigate to your inbox then select shared folder inbox
         String outlookUrl = "https://outlook.office.com/mail/" + sharedFolder + "/";
@@ -94,7 +90,6 @@ public class Outlook extends BasePage{
 	    	String emailBody = Files.readString(Paths.get("testdata/" + emailText + ".txt"));
 	    	clickElementBySelector(messageBody);
 	    	enterTextInField(messageBody,emailBody);
-	    	
 	    	// add attachment to email 
 	    	if (!attachment.equals("no")) {
 	    		clickElementBySelector(attachButton);
@@ -132,10 +127,7 @@ public class Outlook extends BasePage{
 		// press Enter
 		robot.keyPress(KeyEvent.VK_ENTER);
 		robot.keyRelease(KeyEvent.VK_ENTER);
-		
-		
 	}
-
 
 	public void FilterBy(String subOption) throws Exception {
     	clickElementBySelector(filterButton);
@@ -143,10 +135,9 @@ public class Outlook extends BasePage{
     	clickElementBySelector(thisFilterOption);
     }
     
-    
 	public boolean waitForNewEmail(int timeoutSeconds) throws Exception {
 	    String locator = "//*[@aria-label[starts-with(.,'Unread ')]]";
-	    Thread.sleep(20000);
+	    Thread.sleep(5000);
 	    try {
 	    	WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(timeoutSeconds));
 	        
@@ -178,11 +169,11 @@ public class Outlook extends BasePage{
     }
 
 
-    public void markAllEmailsAsRead() {
+    public void markAllEmailsAsRead() throws Exception {
         // XPath selectors
+    	waitForPageToLoad();
         String unreadMessages = "//*[contains(@aria-label,'Unread ')]";
         String markAsRead = "//span[text()='Mark as read']";
-        
         while (elementExists(unreadMessages)) {
         	try {
         		List<WebElement> unreadEmails = driver.findElements(By.xpath(unreadMessages));

@@ -17,14 +17,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
 
 import utils.config.ConfigReader;
+import utils.context.ContextManager;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static core.TestLogger.LOGGER;
 
 import java.io.File;
@@ -39,9 +42,9 @@ public class BasePage {
     private WebDriverWait wait;
     private static final long POLLING_INTERVAL_MS = 500;
     private String originalTab;
-    
-
-    
+    private WebElement currentModal = null;
+    private static int screenshotCounter;
+      
     public BasePage(WebDriver driver) {
         this.driver = driver;
         this.originalTab = driver.getWindowHandle();
@@ -59,6 +62,27 @@ public class BasePage {
         this.timeoutInSeconds = timeout;
         this.wait = new WebDriverWait(driver, Duration.ofSeconds(timeout));
     }
+    
+    private SearchContext getSearchContext() {
+    	return (currentModal != null) ? currentModal : driver;
+    }
+    
+    public boolean isModalActive() {
+    	return currentModal != null;
+    }
+    
+    public static void resetScreeshotCouner() {
+    	screenshotCounter = 0;
+    }
+    
+    public static int getNextScreeshotNumber() {
+    	return ++screenshotCounter;
+    }
+    
+    public void clearModelCurrent() {
+    	currentModal= null;
+    	Logger.info("Modal Context cleared");
+    }
 
     private By getSelector(String locator) {
         String trimmed = locator.trim();
@@ -69,7 +93,22 @@ public class BasePage {
     }
 
     protected WebElement waitForSelector(String locator) {
-        return wait.until(ExpectedConditions.elementToBeClickable(getSelector(locator)));
+    	By by = getSelector(locator);
+    	if (currentModal == null) {
+    		return wait.until(ExpectedConditions.elementToBeClickable(by));
+    	}
+    	
+        return new WebDriverWait(driver, Duration.ofSeconds(timeoutInSeconds)).until(d -> {
+        	try {
+        		WebElement wEl =currentModal.findElement(by);
+        		if (wEl.isDisplayed() && wEl.isEnabled()) {
+        			return wEl;
+        		}
+        		return null;
+        	} catch (StaleElementReferenceException | NoSuchElementException ex) {
+        		return null;
+        	}
+        });
     }
     
     protected WebElement waitForElement(WebElement Selector) {
@@ -104,14 +143,13 @@ public class BasePage {
         );
     }
     
+    
+    
     public void selectDateFromCalendar(String dateFieldSelector, String date) {
         try {
         	//convert excel number to date
-        	int serial= Integer.parseInt(date)-1;
-        	LocalDate baseDate = LocalDate.of(1899, 12, 31);
-        	LocalDate thisDate= baseDate.plusDays(serial);
-        	DateTimeFormatter formatter= DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        	String formattedDate = thisDate.format(formatter);
+  
+        	String formattedDate = convertNumberToDate(date);
             WebElement dateField = waitForSelector(dateFieldSelector);
             dateField.click();
             dateField.clear();
@@ -121,6 +159,37 @@ public class BasePage {
         } catch (Exception e) {
             throw new RuntimeException("❌ Failed to set date in calendar: " + dateFieldSelector, e);
         }
+    }
+    
+    public void sleepFor(int sleepTime) throws Exception {
+    	Thread.sleep(sleepTime*1000);
+    }
+    
+    public void mouseSelectDateFromCalendar(String dateFieldSelector, String date) {
+        try {
+        	//convert excel number to date
+  
+        	String formattedDate = convertNumberToDate(date);
+            WebElement dateField = waitForSelector(dateFieldSelector);
+
+    	    ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", dateField);
+    	    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", dateField);
+            dateField.clear();
+            dateField.sendKeys(formattedDate);
+            dateField.sendKeys(Keys.TAB); // Close the calendar if needed
+            Logger.info("✅ Date entered: " + date);
+        } catch (Exception e) {
+            throw new RuntimeException("❌ Failed to set date in calendar: " + dateFieldSelector, e);
+        }
+    }
+    
+    public String convertNumberToDate(String date) {
+       	//convert excel number to date
+    	int serial= Integer.parseInt(date)-1;
+    	LocalDate baseDate = LocalDate.of(1899, 12, 31);
+    	LocalDate thisDate= baseDate.plusDays(serial);
+    	DateTimeFormatter formatter= DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    	return thisDate.format(formatter);
     }
     
     private void clickElementBySelector(By selector, long timeoutMs) {
@@ -189,6 +258,23 @@ public class BasePage {
             LOGGER.warn("Failed to click element: " + selector + " within timeout of " + timeoutMs + "ms.");
         }
     }
+    
+    public String getVisibleText(String locatorMain, String LocatorSub) {
+    	WebElement mainHeader = driver.findElements(By.xpath(locatorMain))
+    		    .stream()
+    		    .filter(WebElement::isDisplayed)
+    		    .findFirst()
+    		    .orElseThrow(() -> new RuntimeException("No Visible Element found: " + locatorMain));
+
+    		WebElement subItem = mainHeader.findElements(By.xpath(LocatorSub))  // Use findElements instead of findElement
+    		    .stream()
+    		    .filter(WebElement::isDisplayed)
+    		    .findFirst()
+    		    .orElseThrow(() -> new RuntimeException("No Visible Sub Element found: " + locatorMain));
+    		
+    		return subItem.getText().trim();
+    		
+    }
 
     public void clickElementBySelector(String thisSelector) {
     	By selector = getSelector(thisSelector);
@@ -196,6 +282,17 @@ public class BasePage {
         clickElementBySelector(selector, endTime);
     }   
     
+    public void enterTextInFieldViaAction(String locator,String text) {
+    	Actions actions = new Actions(driver);
+    	
+    	WebElement element = driver.findElement(getSelector(locator));
+    	actions.moveToElement(element)
+    		.click()
+    		.keyDown(Keys.CONTROL).sendKeys("a").keyUp(Keys.CONTROL)
+    		.sendKeys(Keys.DELETE)
+    		.sendKeys(text)
+    		.perform();
+    }
 
     public void enterTextInField(String locator, String text) {
     	if (text!=null && !text.isBlank()) {
@@ -204,16 +301,23 @@ public class BasePage {
 	            ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", selector);
 	
 	            // Attempt 1
-	            selector.click();
+	            try {
+	                selector.click();
+	            } catch (Exception clickException) {
+	                Logger.warn("⚠️ Standard click failed, trying JS click for: " + locator);
+	                ((JavascriptExecutor) driver).executeScript("arguments[0].click();", selector);
+	            }
+
+	            // Clear and send keys
 	            selector.clear();
 	            selector.sendKeys(text);
-	
+
 	            Logger.info("✅ Entered text: '" + text + "' successfully in " + locator);
 	        } catch (Exception e) {
 	            throw new RuntimeException("❌ Failed to enter text in: " + locator, e);
 	        }
-    	}
-    }
+	    }
+	}
 
     private boolean textAppeared(WebElement element, String expectedText) {
         String actual = element.getDomProperty("value");
@@ -277,6 +381,20 @@ public class BasePage {
         }
     }
 
+    public boolean checkTextWithinFields(String locator, String text) {
+    	List<WebElement> divs = driver.findElements(getSelector(locator));
+    	boolean hasText = false;
+    	String ThisText = "";
+    	for (WebElement div: divs) {
+    		ThisText = div.getText().trim();
+    		if (div != null && div.getText() != null && div.getText().trim().contains(text)){
+    			hasText = true;
+    		}
+    	}
+    	
+    	return hasText;
+    	
+    }
     
     // true = checked ; false = unchecked
     public void setCheckboxCheckedState(String locator, boolean shouldBeChecked) {
@@ -299,9 +417,9 @@ public class BasePage {
 
     public void focusOnModal(String modalLocator) {
         try {
-            WebElement modal = wait.until(ExpectedConditions.visibilityOfElementLocated(getSelector(modalLocator)));
+        	By by = getSelector(modalLocator);
+            currentModal = wait.until(ExpectedConditions.visibilityOfElementLocated(by));
             driver.switchTo().activeElement();
-            Logger.info("✅ Switched to modal.");
         } catch (Exception e) {
             throw new RuntimeException("❌ Modal not found: " + modalLocator, e);
         }
@@ -369,6 +487,8 @@ public class BasePage {
 
     public String captureScreenshot(String screenshotName) {
         try {
+        	int number = getNextScreeshotNumber();
+        	
             File srcFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
 
             // Align with Hooks.java reportDir
@@ -376,7 +496,7 @@ public class BasePage {
             String screenshotDir = reportDir + "/screenshots";
             new File(screenshotDir).mkdirs();
 
-            String screenshotPath = screenshotDir + "/" + screenshotName + ".png";
+            String screenshotPath = screenshotDir + "/" +number+ "_"+ screenshotName + ".png";
             File destFile = new File(screenshotPath);
             Files.copy(srcFile.toPath(), destFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
@@ -414,6 +534,11 @@ public class BasePage {
         } catch (Exception e) {
             throw new RuntimeException("❌ Failed to double-click: " + locator, e);
         }
+    }
+    
+    public void clickUsingJS(String locator) {
+    	WebElement wElement = wait.until(ExpectedConditions.elementToBeClickable(getSelector(locator)));
+    	((JavascriptExecutor)driver).executeScript("arguments[0].click();", wElement);
     }
 
     public void rightClickElement(String locator) {
@@ -458,6 +583,9 @@ public class BasePage {
         }
     }
     
+    public void waitUntilElementClickable(String locator) throws Exception {
+    	 wait.until(ExpectedConditions.elementToBeClickable(getSelector(locator)));
+	}
     
     public void waitUntilElementVisible(String locator) {
     	waitUntilElementVisible(locator, true);
@@ -486,6 +614,14 @@ public class BasePage {
             throw new RuntimeException("❌ Failed to scroll to element: " + locator, e);
         }
     }
+    
+    public void scrollToSelectorModal(String locator) {
+    	WebElement modalWindow = driver.findElement(By.xpath("//*[@class='modal-body scrollable slds-modal__content slds-p-around_medium']"));
+        WebElement element = modalWindow.findElement(getSelector(locator));
+        
+        new Actions(driver).moveToElement(element).perform(); 
+        
+}
 
     public void scrollToIfPresent(String locator) {
         try {
@@ -940,11 +1076,180 @@ public class BasePage {
 		actions.moveToElement(screenObject).click().perform();
 	}
 	
+	public void mouseOverAndClickCheckBox(String locator) throws Exception {
+	    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+	    WebElement screenObject = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(locator)));
+	    ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", screenObject);
+	    ((JavascriptExecutor) driver).executeScript("arguments[0].click();", screenObject);
+	}
+	
+	
+	public void editCasedropdownScrollAndClick(String dropdownXpath, String optionXpath) throws Exception {
+	    WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+	    WebElement dropdown = wait.until(ExpectedConditions.elementToBeClickable(By.xpath(dropdownXpath)));
+	    ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", dropdown);
+	    dropdown.click();
+	    WebElement option = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(optionXpath)));
+
+	    ((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", option);
+	    option.click();
+	}
+	
+	public void dropdownScrollAndClick(String locatorToMouseOver, String locatorToBeFound) throws Exception {
+	    WebElement dropdownTrigger = waitForSelector(locatorToMouseOver);
+
+	    // Scroll the dropdown trigger into view
+	    ((JavascriptExecutor) driver).executeScript(
+	        "arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", dropdownTrigger);
+
+	    // Click to open the dropdown
+	    Actions actions = new Actions(driver);
+	    actions.moveToElement(dropdownTrigger).click().perform();
+
+	    int attempt = 0;
+	    while (attempt < 20) {
+	        try {
+	            List<WebElement> options;
+
+	            if (currentModal == null) {
+	                options = driver.findElements(getSelector(locatorToBeFound));
+	            } else {
+	                options = currentModal.findElements(getSelector(locatorToBeFound));
+	            }
+
+	            for (WebElement option : options) {
+	                if (option.isDisplayed() && option.isEnabled()) {
+	                    ((JavascriptExecutor) driver).executeScript(
+	                        "arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", option);
+	                    actions.moveToElement(option).click().perform();
+	                    Logger.info("✅ Dropdown option selected: " + locatorToBeFound);
+	                    return;
+	                }
+	            }
+
+	            // If no valid option found, press ARROW_DOWN to reveal more
+	            dropdownTrigger.sendKeys(Keys.ARROW_DOWN);
+	            Thread.sleep(300); // Allow UI to update after scrolling
+
+	        } catch (Exception e) {
+	            Logger.warn("⚠️ Exception while searching dropdown option: " + e.getMessage());
+	        }
+
+	        attempt++;
+	    }
+
+	    throw new Exception("❌ Option not found in dropdown: " + locatorToBeFound);
+	}
+	
 	public void clickActiveElementByAttribute(String attribute ,String value) {
 		WebElement activeElement = driver.switchTo().activeElement();
 		if (value.equals(activeElement.getDomAttribute(attribute))) {
 			activeElement.click();
 		}
+	}
+	
+	public void clickActiveElementByLocator(String locator) throws Exception {
+		By selector = getSelector(locator);
+		// get all elements
+		List<WebElement> elements = driver.findElements(selector);
+		//filter for visible
+		 List<WebElement> visible = elements.stream()
+				 .filter(WebElement::isDisplayed)
+				 .collect(Collectors.toList());
+		 if (visible.size() == 1) {
+			 // on element
+			 visible.get(0).click();
+		 } else if (visible.isEmpty()) {
+			 throw new Exception("No Visible Elements found");
+		 } else {
+			 throw new Exception("Too Many Elements found");
+		 }
+	}
+	
+	public void mouseClickActiveElementByLocator(String locator) throws Exception {
+		By selector = getSelector(locator);
+		// get all elements
+		List<WebElement> elements = driver.findElements(selector);
+		//filter for visible
+		 List<WebElement> visible = elements.stream()
+				 .filter(WebElement::isDisplayed)
+				 .collect(Collectors.toList());
+		 if (visible.size() == 1) {
+			    WebElement screenObject = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(locator)));
+				((JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center', inline: 'nearest'});", visible.get(0));
+				Actions actions = new Actions(driver);
+				actions.moveToElement(visible.get(0)).click().perform();
+		 } else if (visible.isEmpty()) {
+			 throw new Exception("No Visible Elements found");
+		 } else {
+			 throw new Exception("Too Many Elements found");
+		 }
+	}
+	
+	public void clickActiveLocator(String locator) throws Exception {
+		List<WebElement> buttons = wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(getSelector(locator)));
+		for (WebElement button : buttons){
+			if (button.isEnabled()) {
+				button.click();
+				return;
+			}
+		}
+		
+		throw new Exception("No Active Button to click.");
+	}
+
+	public String getCaseID(String value) throws Exception {
+		//check to see if value wrapped in {}
+		String caseID= "";
+	    if (value.contains("_")) {
+	    	// split on underscore
+	    	value = value.split("_")[0];
+	    }
+		if (value != null && value.matches("\\{[^{}*]+\\}")) {
+			String recordHeader = value.substring(1, value.length()-1);
+			if (ContextManager.containsKey(recordHeader)){
+				caseID = (String) ContextManager.get(recordHeader);
+			} else {
+				caseID = recordHeader;
+			}
+		} else if (ContextManager.containsKey(value)){ 
+			caseID = (String) ContextManager.get(value);
+		} else if (value == null) {
+			throw new Exception("Unable to get new case ID");
+		}else {
+			caseID = value.trim();
+		}
+		return caseID;
+	}
+	
+	public void closeAllTabs(String locator) {
+		// TODO Auto-generated method stub
+		List<WebElement> closeButtons = driver.findElements(getSelector(locator));
+		
+		for (WebElement button : closeButtons) {
+			if (button.isDisplayed() && button.isEnabled()) {
+				button.click();
+			}
+		}
+	}
+	
+	public void waitForPageToLoad() throws Exception {
+		ExpectedCondition<Boolean> pageLoadCondition = driver ->
+		((JavascriptExecutor) driver).executeScript("return document.readyState").equals("complete");
+		
+		try {
+			wait.until(pageLoadCondition);
+			Logger.info("Page Loaded");
+		} catch (Exception e) {
+			throw new Exception("Page Not loaded " + e);
+		}
+	}
+	
+	public void highlightElement(String locator) {
+		WebElement element = driver.findElement(By.xpath("locator"));
+		JavascriptExecutor js = (JavascriptExecutor) driver;
+		js.executeScript("arguments[0].style.boarder='3px solid red'", element);
 	}
 }
 

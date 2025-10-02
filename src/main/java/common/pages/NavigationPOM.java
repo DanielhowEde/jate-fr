@@ -73,5 +73,10 @@ public class NavigationPOM extends BasePage {
 			clickElementBySelector(formattedLink);
 		}
 	}
+
+	public void waitFor(int thisWait) throws Exception {
+		// TODO Auto-generated method stub
+		sleepFor(thisWait);
+	}
 	
 }

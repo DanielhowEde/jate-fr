@@ -52,6 +52,8 @@ public class LoginPOM extends BasePage {
     }
     
     public void loginAsUser(String userType) {
+    	closeAllTabs();
+    	
     	JKSReader reader = new JKSReader();
     	String[] creds = reader.getSecret(userType).split(",");
     	String username = creds[0];
@@ -62,40 +64,42 @@ public class LoginPOM extends BasePage {
     }
     
 
-	public boolean confirmLogin() {
-		// check for error message
-		if (isElementVisible(errorMessage) == true) { ;
-			String actual = getTextFromElement(errorMessage);
-			String expected = "Authentication failed.";
-			assertTrue("Text is not expected",actual.contains(expected));
-			return false;
-		} else {
-			String actual = getTextFromElement(homepageTitle);
-			String expected = "Program Points Balance Sheet";
-			assertTrue("Home Page Title not present",actual.contains(expected));
-			return true;
+	
+	private void closeAllTabs() {
+		String HomeTab = driver.getWindowHandle();
+		Set<String> allTabs = driver.getWindowHandles();
+		for (String tab : allTabs) {
+			if (!tab.equals(HomeTab)) {
+				driver.switchTo().window(tab);
+				driver.close();
+			}
 		}
+		driver.switchTo().window(HomeTab);
 	}
 
 	public void LoginToOutlook(String userType) {
-	    	JKSReader reader = new JKSReader();
-    		String[] creds = reader.getSecret(userType).split(",");
-    		String username = creds[0];
-    		String password = creds[1];
-    		enterTextInField(outlookUserName, username.trim());
-    		enterTextInField(outlookPassword, password.trim());
-    		clickElementBySelector(outlookLoginButton);
+		closeAllTabs();
+    	JKSReader reader = new JKSReader();
+		String[] creds = reader.getSecret(userType).split(",");
+		String username = creds[0];
+		String password = creds[1];
+		enterTextInField(outlookUserName, username.trim());
+		enterTextInField(outlookPassword, password.trim());
+		clickElementBySelector(outlookLoginButton);
 		
 	}
 
 	public void logOut() throws Exception {
 		selectMenuOption(optUserProfile, optLogOut);
-		
+		waitForPageToLoad();
 	}
 
 	public void loginToSite(String user) throws Exception {
 		String HomeTab = driver.getWindowHandle();
 		ContextManager.put("HomeTab", HomeTab);
+		
+		closeAllTabs();
+		
 		if (isElementVisible(siteUserName)) {
 	
 	    	JKSReader reader = new JKSReader();

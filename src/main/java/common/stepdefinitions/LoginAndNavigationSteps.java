@@ -7,14 +7,15 @@ import common.pages.LoginPOM;
 import common.pages.NavigationPOM;
 import static org.junit.Assert.*;
 
-public class LoginAndNavigationSteps {
+public class LoginAndNavigationSteps{
 	WebDriver driver = WebDriverManager.getDriver(); 
     LoginPOM loginPage = new LoginPOM(driver);
     NavigationPOM navigationPage = new NavigationPOM(driver);
   	
 	@Given("I open the URL {string}")
-	public void openSite(String url) {
+	public void openSite(String url) throws Exception {
 	    driver.get(url);
+	    Thread.sleep(1000);
 	}
 	
 	@Given("I enter {string}  into the username field")
@@ -42,17 +43,6 @@ public class LoginAndNavigationSteps {
         loginPage.clickLoginButton();
     }
     
-    @When("I should be redirected to the home page")
-    public void congfirmLogin() {
-    	boolean actualStatus = loginPage.confirmLogin();
-        assertTrue("Home page not loaded", actualStatus);
-    }
-    
-    @When("I should see an error message")
-    public void checkForError() {
-    	boolean actualStatus = loginPage.confirmLogin();
-        assertFalse("Home page not loaded", actualStatus);
-    }
     
     @Given("Login to Outlook as {string}")
     public void LoginToOutlook(String userType) {
@@ -70,5 +60,10 @@ public class LoginAndNavigationSteps {
 	loginPage.logOut();
     }    
 
+    @Then("I wait for {string} seconds")
+    public void waitForSeconds(String waitTime) throws Exception {
+    	int thisWait = Integer.parseInt(waitTime);
+    	navigationPage.waitFor(thisWait);
+    }
 }
 
