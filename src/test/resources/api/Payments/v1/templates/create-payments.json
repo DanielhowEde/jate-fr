@@ -1,0 +1,12 @@
+{
+	"amount": ${amount},
+	"currency": "${currency:GBP}",
+	"reference": "${reference}",
+	{#if eq channel "online"}
+	"channel": "online",
+	{#else}
+	"channel": "pos",
+	{#/if}
+	"bookedAt": "{date(bookedAt|in=dd/MM/yyyy HH:mm|out=yyyy-MM-dd'T'HH:mm:ss)}",
+	"createdAt": "{date(now),yyyy-MM-dd'T'HH:mm:ssXXX}"
+}
