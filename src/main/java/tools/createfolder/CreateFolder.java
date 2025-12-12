@@ -52,36 +52,42 @@ public class CreateFolder {
     // Engine placeholder
     static void createEnginePom(String path) {
         createDir(path + "/src/test/java");
-        writeFile(path + "/pom.xml", getEnginePom());
-        writeFile(path + "/src/test/java/TestRunner.java", getEngineTestRunner());
+        writeFile(path + "/pom.xml", makeEnginePom());
+        writeFile(path + "/src/test/java/TestRunner.java", makeEngineTestRunner());
+        writeFile(path + "/src/test/java/project/BasePage.java", makeBasePage());
     }
 
-    // App structure with feature + step + runner
+
+
+	// App structure with feature + step + runner
     static void createAppStructure(String appPath, String appName) {
         String[] subDirs = {
             "/src/test/java/runner",
             "/src/test/java/pages",
+            "/src/test/java/project",
+            "/src/test/java/runner",
             "/src/test/java/stepdefinitions",
             "/src/test/resources/features"
+            
         };
 
         for (String sub : subDirs) {
             createDir(appPath + sub);
         }
 
-        writeFile(appPath + "/pom.xml", getAppPom(appName));
-        writeFile(appPath + "/src/test/java/runner/CucumberTestRunner.java", getCucumberTestRunner());
-        writeFile(appPath + "/src/test/java/stepdefinitions/SampleSteps.java", getSampleSteps());
-        writeFile(appPath + "/src/test/resources/features/sample.feature", getSampleFeature());
-        writeFile(appPath + "/src/test/resources/config.properties", getConfigProperties(appName));
-        writeFile(appPath + "/src/test/java/pages/SamplePOM.java", getSamplePOM());
+        writeFile(appPath + "/pom.xml", makeAppPom(appName));
+        writeFile(appPath + "/src/test/java/runner/CucumberTestRunner.java", makeCucumberTestRunner());
+        writeFile(appPath + "/src/test/java/stepdefinitions/SampleSteps.java", makeSampleSteps());
+        writeFile(appPath + "/src/test/resources/features/sample.feature", makeSampleFeature());
+        writeFile(appPath + "/src/test/resources/config.properties", makeConfigProperties(appName));
+        writeFile(appPath + "/src/test/java/pages/SamplePOM.java", makeSamplePOM());
     }
 
-    private static String getSamplePOM() {
+    private static String makeSamplePOM() {
 		return 
 			"package pages;\n" +
 			"\n" +
-			"import core.BasePage;\n "+ 
+			"import project.BasePage;\n "+ 
 			"import core.Hooks;\n"+
 			"import org.openqa.selenium.WebDriver;\n"+
 			"import utils.context.ScenarioContext;\n"+
@@ -142,8 +148,20 @@ public class CreateFolder {
 			"        }\n    }\n}\n";
 	}
 
+    private static String makeBasePage() {
+    	return
+                "package project \n\n"+
+                "public class BasePage extends core.BasePage{ \n\n"+ 
+                "    public BasePage(org.openqa.selenium.WebDriver driver) {\n"+
+                "        super(driver);\n"+
+                "    }\n\n"+
+                "    //*******  Project Specific Actions go here *******"+
+                "}    ";
+	}
+
+    
 	// Engine POM
-    static String getEnginePom() {
+    static String makeEnginePom() {
         return
             "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"\n" +
             "         xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n" +
@@ -158,7 +176,7 @@ public class CreateFolder {
     }
 
     // App POM
-    static String getAppPom(String appName) {
+    static String makeAppPom(String appName) {
         String artifactId = appName.toLowerCase().replaceAll("\\s+", "") + "-tests";
         return
             "<project xmlns=\"http://maven.apache.org/POM/4.0.0\"\n" +
@@ -181,7 +199,7 @@ public class CreateFolder {
     }
 
     // App test runner (JUnit + Cucumber)
-    static String getCucumberTestRunner() {
+    static String makeCucumberTestRunner() {
         return
             "package runner;\n\n" +
             "import org.junit.platform.suite.api.ConfigurationParameter;\n" +
@@ -202,7 +220,7 @@ public class CreateFolder {
     }
 
     // Sample feature file
-    static String getSampleFeature() {
+    static String makeSampleFeature() {
         return
             "Feature: Sample feature\n\n" +
             "  Scenario: Simple test\n" +
@@ -210,7 +228,7 @@ public class CreateFolder {
     }
 
     // Sample step definition
-    static String getSampleSteps() {
+    static String makeSampleSteps() {
         return
             "package stepdefinitions;\n\n" +
             "import io.cucumber.java.en.Given;\n\n" +
@@ -225,7 +243,7 @@ public class CreateFolder {
     }
 
     // Optional test-engine placeholder runner
-    static String getEngineTestRunner() {
+    static String makeEngineTestRunner() {
         return
             "public class TestRunner {\n" +
             "    public static void main(String[] args) {\n" +
@@ -235,7 +253,7 @@ public class CreateFolder {
     }
     
     // Generates the config.properties file
-    static String getConfigProperties(String appName) {
+    static String makeConfigProperties(String appName) {
         return
             "browser=chrome\n" +
             "headless=false\n\n" +

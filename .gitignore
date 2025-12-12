@@ -9,3 +9,4 @@ users.csv
 *.jks
 *.html
 .classpath
+out/
