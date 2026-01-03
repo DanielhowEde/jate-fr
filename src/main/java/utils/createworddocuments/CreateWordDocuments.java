@@ -10,7 +10,6 @@ import org.jsoup.select.Elements;
 
 import java.io.*;
 import java.nio.file.Files;
-import java.util.Base64;
 
 
 public class CreateWordDocuments {

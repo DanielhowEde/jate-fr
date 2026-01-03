@@ -2,16 +2,9 @@ package common.pages;
 
 import core.BasePage;
 import utils.context.*;
-import static org.junit.Assert.*;
-
 import java.util.Set;
 
-import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
-import org.openqa.selenium.WindowType;
-
 import utils.jks.JKSReader;
 
 public class LoginPOM extends BasePage {

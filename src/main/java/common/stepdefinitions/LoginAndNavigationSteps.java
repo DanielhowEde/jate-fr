@@ -5,7 +5,6 @@ import io.cucumber.java.en.*;
 import org.openqa.selenium.WebDriver;
 import common.pages.LoginPOM;
 import common.pages.NavigationPOM;
-import static org.junit.Assert.*;
 
 public class LoginAndNavigationSteps{
 	WebDriver driver = WebDriverManager.getDriver(); 

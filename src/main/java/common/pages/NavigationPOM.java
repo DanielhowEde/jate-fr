@@ -1,7 +1,6 @@
 package common.pages;
 
 import core.BasePage;
-import static org.junit.Assert.*;
 
 import org.jcodec.common.logging.Logger;
 import org.openqa.selenium.WebDriver;

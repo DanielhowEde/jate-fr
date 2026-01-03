@@ -14,27 +14,23 @@ import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 
 
+import utils.context.*;
 import utils.config.ConfigReader;
-import utils.context.ContextManager;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static core.TestLogger.LOGGER;
 
 import java.io.File;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 
 public class BasePage {
     protected WebDriver driver;
@@ -44,6 +40,16 @@ public class BasePage {
     private String originalTab;
     private WebElement currentModal = null;
     private static int screenshotCounter;
+    
+    protected <T> T waitFor(ExpectedCondition<T> condition) {
+        try {
+            return wait.until(condition);
+        } catch (RuntimeException e) {
+            ScenarioContext scenarioContext = new ScenarioContext();
+			scenarioContext.set("LAST_EXCEPTION", e);
+            throw e;
+        }
+    }
       
     public BasePage(WebDriver driver) {
         this.driver = driver;
@@ -115,7 +121,7 @@ public class BasePage {
         return wait.until(ExpectedConditions.elementToBeClickable(Selector));
     }
 
-    private boolean isElementOnTop(WebElement element) {
+    public boolean isElementOnTop(WebElement element) {
         JavascriptExecutor js = (JavascriptExecutor) driver;
         String script = """
             var elem = arguments[0];

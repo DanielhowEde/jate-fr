@@ -5,7 +5,6 @@ import core.TestLogger;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-
 import org.apache.poi.ss.formula.functions.Rows;
 
 public final class ExcelAccess {

@@ -14,12 +14,13 @@ import org.openqa.selenium.Dimension;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.TimeoutException;
 
+import utils.config.ConfigReader;
 import utils.context.ContextManager;
 import utils.context.StoryContext;
 import utils.excel.ExcelFileManager;
 import utils.context.ScenarioContext;
-import utils.createworddocuments.*;
 import common.pages.LoginPOM;
 import io.cucumber.java.Status;
 import listeners.StepLogger;
@@ -29,8 +30,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 import java.util.logging.LogManager;
@@ -47,6 +50,8 @@ public class Hooks {
     private static String reportDir;
     public final static String reportNameFromConfig =  getReportPropertyFromConfig("report.name", "UnnamedProject");
     public final static String reportTitleFromConfig =  getReportPropertyFromConfig("report.title", "Extent");
+    private static final Map<String, Integer> retryCountMap = new ConcurrentHashMap<>();
+    private static final int MAX_RETRIES = 1;
 
     public static ExtentTest getExtentTest() {
         return extentTest;
@@ -92,6 +97,7 @@ public class Hooks {
 
     @Before
     public void setup(Scenario scenario) {
+    	stepCounter = 1;
         driver = core.WebDriverManager.getDriver();
         driver.manage().window().setSize(new Dimension(1920, 1080));
         extentTest = extentReports.createTest(scenario.getName());
@@ -154,14 +160,29 @@ public class Hooks {
 
     @After
     public void tearDown(Scenario scenario) throws IOException {
-    	Status finalStatus = scenario.getStatus();
+        Status finalStatus = scenario.getStatus();
+        String scenarioKey = scenario.getName();
 
         if (finalStatus == Status.PASSED) {
             extentTest.pass("Scenario passed successfully!");
+            clearRetry(scenarioKey);
         } else {
+
+            // Get the underlying error (Cucumber 7+ usually supports this)
+            Throwable error = null;
+            try {
+            	Throwable lastError = (Throwable) scenarioContext.get("LAST_EXCEPTION");
+            } catch (Throwable ignored) {
+                // If your Cucumber version doesn't support getError(), error stays null
+            }
+
+            boolean timeoutFailure = scenario.isFailed() && isTimeoutFailure(error);
+
             String message;
             if (scenario.isFailed()) {
-                message = "Scenario failed due to an error.";
+                message = timeoutFailure
+                        ? "Scenario failed due to a TIMEOUT (recovery eligible)."
+                        : "Scenario failed due to an error.";
             } else if (finalStatus == Status.UNDEFINED || finalStatus == Status.SKIPPED) {
                 message = "Scenario failed due to skipped/undefined steps.";
             } else {
@@ -174,8 +195,24 @@ public class Hooks {
             } else {
                 extentTest.fail(message);
             }
-            logoutIfNeeded();
+
+            // ✅ NEW: timeout recovery path
+            if (timeoutFailure && canRetry(scenarioKey)) {
+                int attempt = incrementRetry(scenarioKey);
+                extentTest.warning("⏳ Timeout detected. Running recovery (attempt " + attempt + " of " + MAX_RETRIES + ").");
+
+                recoverFromTimeout();
+
+                // IMPORTANT NOTE:
+                // This hook can't "rerun" the scenario by itself.
+                // If you're using a rerun plugin, letting it fail is fine:
+                // the scenario will be written to rerun.txt and executed again in the rerun job.
+            } else {
+                // Non-timeout OR retries exhausted -> normal logout cleanup
+                logoutIfNeeded();
+            }
         }
+
         try {
             core.WebDriverManager.quitDriver();
         } catch (Exception e) {
@@ -192,7 +229,7 @@ public class Hooks {
         scenarioContext = new ScenarioContext();
         logger.info("ScenarioContext cleared after feature execution.");
         
-        utils.excel.ExcelFileManager.cleanOldResults("results", 6);
+        ExcelFileManager.cleanOldResults("results", 6);
         logger.info("Tidied up results file");
         
         try {
@@ -213,21 +250,33 @@ public class Hooks {
         tidyDir();
     }
 
-    private String captureScreenshot(Scenario scenario) throws IOException {
-        File srcFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
-        String scenarioName = scenario.getName().replaceAll(" ", "_");
-        String screenshotPath = reportDir + "/screenshots/" + scenarioName + "_Failed.png";
-        Files.createDirectories(Path.of(reportDir + "/screenshots"));
+	private String captureScreenshot(Scenario scenario) throws IOException {
 
-        try {
-            Files.createDirectories(Path.of("target/screenshots"));
-            Files.copy(srcFile.toPath(), Path.of(screenshotPath));
-            return screenshotPath;
-        } catch (IOException e) {
-            logger.log(Level.SEVERE, "❌ Failed to capture failure screenshot: " + e.getMessage());
-            return null;
-        }
-    }
+	    File srcFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+
+	    String scenarioName = scenario.getName().replaceAll(" ", "_");
+	    Path screenshotsDir = Path.of(reportDir, "screenshots");
+	    Files.createDirectories(screenshotsDir);
+
+	    String baseName = scenarioName + "_Failed";
+	    String extension = ".png";
+
+	    Path targetPath = screenshotsDir.resolve(baseName + extension);
+
+	    int counter = 1;
+	    while (Files.exists(targetPath)) {
+	        targetPath = screenshotsDir.resolve(baseName + "_" + counter + extension);
+	        counter++;
+	    }
+
+	    try {
+	        Files.copy(srcFile.toPath(), targetPath);
+	        return targetPath.toString();
+	    } catch (IOException e) {
+	        logger.log(Level.SEVERE, "❌ Failed to capture failure screenshot: " + e.getMessage(), e);
+	        return null;
+	    }
+	}
 
     private void extractSpreadsheetName(Scenario scenario) {
         Optional<String> spreadsheetTag = scenario.getSourceTagNames().stream()
@@ -326,6 +375,51 @@ public class Hooks {
 	    } catch (Exception e) {
 	        System.out.println("⚠️ Unexpected error during logout: " + e.getMessage());
 	    }
+    }
+    
+    private boolean isTimeoutFailure(Throwable t) {
+        if (t == null) return false;
+
+        if (t instanceof TimeoutException) return true;
+
+        // common nested cases
+        Throwable cause = t.getCause();
+        while (cause != null) {
+            if (cause instanceof TimeoutException) return true;
+            cause = cause.getCause();
+        }
+
+        String msg = t.getMessage();
+        return msg != null && msg.toLowerCase().contains("timeout");
+    }
+    
+    private void recoverFromTimeout() {
+        try {
+            // best effort: if logged in, logout, then go to base url
+            logoutIfNeeded();
+
+            String baseUrl = ConfigReader.getProperty("base.url"); // adjust if your key differs
+            core.WebDriverManager.getDriver().navigate().to(baseUrl);
+
+            // optional: add a cheap “page is alive” check
+            // ((JavascriptExecutor) driver).executeScript("return document.readyState");
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "⚠️ Recovery attempt failed: " + e.getMessage(), e);
+        }
+    }
+    
+    private boolean canRetry(String scenarioKey) {
+        return retryCountMap.getOrDefault(scenarioKey, 0) < MAX_RETRIES;
+    }
+
+    private int incrementRetry(String scenarioKey) {
+        int next = retryCountMap.getOrDefault(scenarioKey, 0) + 1;
+        retryCountMap.put(scenarioKey, next);
+        return next;
+    }
+
+    private void clearRetry(String scenarioKey) {
+        retryCountMap.remove(scenarioKey);
     }
     
 }

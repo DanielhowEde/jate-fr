@@ -3,30 +3,17 @@ package utils.outlook;
 import org.openqa.selenium.By;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.devtools.idealized.Javascript;
-import org.openqa.selenium.devtools.v131.headlessexperimental.model.ScreenshotParams.Format;
-import org.openqa.selenium.interactions.Action;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.TimeoutException;
 import java.time.Duration;
-import java.util.NoSuchElementException;
 
-import core.WebDriverManager;
 import core.BasePage;
-import core.Hooks;
-
-import java.awt.AWTException;
-import java.awt.Robot;
-import java.awt.datatransfer.StringSelection;
-import java.awt.event.KeyEvent;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.logging.Logger;
 
 public class Outlook extends BasePage{
 
@@ -86,7 +73,7 @@ public class Outlook extends BasePage{
 	    	
 	    	enterTextInField(subjectField,subject);
 	    	
-	    	// Enter Text from text file in the testdata directory
+	    	// Enter Text from text file in the test data directory
 	    	String emailBody = Files.readString(Paths.get("testdata/" + emailText + ".txt"));
 	    	clickElementBySelector(messageBody);
 	    	enterTextInField(messageBody,emailBody);
@@ -114,20 +101,6 @@ public class Outlook extends BasePage{
 	    
     }
     
-    private void uploadFileKeyboardCommands(String attachment) throws Exception {
-		Robot robot = new Robot();
-		StringSelection selection= new StringSelection(attachment);
-		
-		robot.keyPress(KeyEvent.VK_CONTROL);
-		robot.keyPress(KeyEvent.VK_V);
-		
-		robot.keyRelease(KeyEvent.VK_V);
-		robot.keyRelease(KeyEvent.VK_CONTROL);
-		
-		// press Enter
-		robot.keyPress(KeyEvent.VK_ENTER);
-		robot.keyRelease(KeyEvent.VK_ENTER);
-	}
 
 	public void FilterBy(String subOption) throws Exception {
     	clickElementBySelector(filterButton);
@@ -195,21 +168,6 @@ public class Outlook extends BasePage{
         		System.out.println(" Failed to mark email as read: "+ e.getMessage());
         	}
         }
-  /*      if (elementExists(unreadMessages)) {
-            List<WebElement> unreadEmails = driver.findElements(By.xpath(unreadMessages));
-            for (WebElement email : unreadEmails) {
-            	try {
-            		Actions actions = new Actions(driver);
-            		actions.contextClick(email).perform();
-            		
-            		// wait for 'Mark as read' option then click it
-            		WebElement markAsReadOption = new WebDriverWait(driver, Duration.ofSeconds(5)).until(ExpectedConditions.elementToBeClickable(By.xpath(markAsRead)));
-            		markAsReadOption.click();
-            		Thread.sleep(500);
-            	} catch (Exception e) {
-            		System.out.println(" Failed to mark email as read: "+ e.getMessage());
-            	}
-            }
-        }*/
+
     }
 }

@@ -13,6 +13,10 @@ import static io.cucumber.junit.platform.engine.Constants.*;
 @ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "common.stepdefinitions,core") // Step definitions location
 @ConfigurationParameter(key = PLUGIN_PROPERTY_NAME, value = "pretty")
 @ConfigurationParameter(key = PLUGIN_PROPERTY_NAME, value = "pretty, listeners.StepLogger")
+@ConfigurationParameter(key = PLUGIN_PROPERTY_NAME, value = "pretty, listeners.StepLogger, rerun:target/rerun.txt"
+	)
+
+
 public class CucumberTestRunner {
 
     static {

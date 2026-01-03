@@ -3,8 +3,6 @@ package utils.excel;
 import org.apache.poi.ss.usermodel.*;
 import core.TestLogger;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import core.TestLogger;
-
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,8 +19,10 @@ public class ExcelFileManager {
     private List<String> headers;
     private List<Map<String, String>> allRows; // 🚀 preload ALL rows
     private Iterator<Row> rowIterator;
-    private final String filePath;
-    private final String sheetName;
+    @SuppressWarnings("unused")
+	private final String filePath;
+    @SuppressWarnings("unused")
+	private final String sheetName;
 
 
     public ExcelFileManager(String filePath, String sheetName) {
@@ -30,7 +30,7 @@ public class ExcelFileManager {
         this.sheetName = sheetName;
 
         try (FileInputStream fis = new FileInputStream(filePath)) {
-            this.workbook = new XSSFWorkbook(fis);
+            ExcelFileManager.workbook = new XSSFWorkbook(fis);
 
             if (sheetName != null && !sheetName.isBlank()) {
                 this.sheet = workbook.getSheet(sheetName);
