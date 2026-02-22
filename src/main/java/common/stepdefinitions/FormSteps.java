@@ -93,19 +93,72 @@ public class FormSteps {
      */
     @And("I click the submit button")
     public void clickSubmitButton() {
-        String[] candidates = {
-            "//button[@type='submit']",
-            "//input[@type='submit']",
-            "//button[normalize-space()='Submit Form']",
-            "//button[normalize-space()='Submit']",
+        clickButtonByName("Submit Form");
+    }
+
+    /**
+     * Clicks a button (or button-like element) whose visible label matches
+     * {@code buttonName}, ignoring any underscored/underlined access-key letters.
+     *
+     * <p>Matching is done with {@code normalize-space(.)} which collects text
+     * from <em>all</em> descendant text nodes, so a button rendered as
+     * {@code <button>S<u>u</u>bmit</button>} is found by passing {@code "Submit"}.
+     *
+     * <p>Strategy order:
+     * <ol>
+     *   <li>Exact full-text match on {@code button} / {@code input[type=button|submit|reset]}</li>
+     *   <li>{@code aria-label} attribute match</li>
+     *   <li>{@code title} attribute match</li>
+     *   <li>{@code value} attribute match (for {@code <input>} buttons)</li>
+     *   <li>{@code role="button"} with matching text</li>
+     *   <li>Anchor ({@code <a>}) with matching text</li>
+     *   <li>Partial-text contains match on {@code button} (fallback)</li>
+     * </ol>
+     *
+     * <p>Example:
+     * <pre>
+     *   When I click the button "Save"
+     *   When I click the button "Cancel"
+     * </pre>
+     */
+    @When("I click the button {string}")
+    public void clickButtonByName(String buttonName) {
+        String e = xpathEscape(buttonName);
+
+        String[] strategies = {
+            // 1. Exact visible-text match — normalize-space(.) spans child elements
+            //    so <button>S<u>u</u>bmit</button> matches "Submit"
+            "//button[normalize-space(.)=" + e + "]",
+            "//input[@type='button' or @type='submit' or @type='reset'][normalize-space(@value)=" + e + "]",
+            // 2. ARIA label
+            "//*[@aria-label=" + e + " and (@role='button' or self::button or self::input)]",
+            // 3. title attribute
+            "//button[@title=" + e + "]",
+            "//*[@role='button'][@title=" + e + "]",
+            // 4. value attribute (input buttons)
+            "//input[@value=" + e + "]",
+            // 5. role="button" with matching text
+            "//*[@role='button'][normalize-space(.)=" + e + "]",
+            // 6. Anchor styled as a button
+            "//a[normalize-space(.)=" + e + "]",
+            // 7. Partial-text fallback (contains) — lowest priority
+            "//button[contains(normalize-space(.)," + e + ")]",
         };
-        for (String xpath : candidates) {
+
+        for (String xpath : strategies) {
             if (page.elementExists(xpath)) {
                 page.clickElementBySelector(xpath);
-                LOGGER.info("Clicked submit button via: {}", xpath);
+                LOGGER.info("Clicked button '{}' via: {}", buttonName, xpath);
                 return;
             }
         }
-        throw new RuntimeException("No submit button found on the page.");
+        throw new RuntimeException("No button found on page with label: '" + buttonName + "'");
+    }
+
+    /** Mirrors {@link core.BasePage#xpathEscape} for use within this class. */
+    private static String xpathEscape(String text) {
+        if (!text.contains("'"))  return "'" + text + "'";
+        if (!text.contains("\"")) return "\"" + text + "\"";
+        return "concat('" + text.replace("'", "', \"'\", '") + "')";
     }
 }
