@@ -2,6 +2,7 @@ package common.stepdefinitions;
 
 import core.BasePage;
 import core.WebDriverManager;
+import io.cucumber.java.en.And;
 import io.cucumber.java.en.When;
 import org.openqa.selenium.WebDriver;
 import utils.context.ContextManager;
@@ -84,5 +85,27 @@ public class FormSteps {
         }
 
         LOGGER.info("Form fill complete for sheet '{}' iteration '{}'", sheetName, iteration);
+    }
+
+    /**
+     * Clicks the page's submit button, identified by common submit-button
+     * patterns (type="submit", text "Submit", or value "Submit").
+     */
+    @And("I click the submit button")
+    public void clickSubmitButton() {
+        String[] candidates = {
+            "//button[@type='submit']",
+            "//input[@type='submit']",
+            "//button[normalize-space()='Submit Form']",
+            "//button[normalize-space()='Submit']",
+        };
+        for (String xpath : candidates) {
+            if (page.elementExists(xpath)) {
+                page.clickElementBySelector(xpath);
+                LOGGER.info("Clicked submit button via: {}", xpath);
+                return;
+            }
+        }
+        throw new RuntimeException("No submit button found on the page.");
     }
 }

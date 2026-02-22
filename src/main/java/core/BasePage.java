@@ -1274,37 +1274,47 @@ public class BasePage {
 	}
 
 	/**
-	 * Finds the XPath locator for the input, textarea, or select element
-	 * associated with the given visible label text. Tries 16 DOM strategies
-	 * in priority order and returns the first match.
+	 * Finds the XPath locator for the form control associated with the given
+	 * visible label text. Tries strategies in priority order — native inputs
+	 * first, then custom dropdown widgets (role="combobox" / role="listbox").
 	 *
 	 * @throws RuntimeException if no matching field is found for the label
 	 */
 	private String findLocatorByLabel(String labelText) {
 		String e = xpathEscape(labelText);
 		String[] strategies = {
-			// 1–3: Classic HTML for/id linkage
+			// 1–3: Classic HTML for/id linkage — native controls
 			"//input[@id = //label[normalize-space()=" + e + "]/@for]",
 			"//textarea[@id = //label[normalize-space()=" + e + "]/@for]",
 			"//select[@id = //label[normalize-space()=" + e + "]/@for]",
-			// 4–6: ARIA label directly on the control
+			// 4–6: ARIA label directly on a native control
 			"//input[@aria-label=" + e + "]",
 			"//textarea[@aria-label=" + e + "]",
 			"//select[@aria-label=" + e + "]",
-			// 7–9: Label element wraps the control
+			// 7–9: Label element wraps the native control
 			"//label[normalize-space()=" + e + "]//input",
 			"//label[normalize-space()=" + e + "]//textarea",
 			"//label[normalize-space()=" + e + "]//select",
-			// 10–12: Immediately adjacent sibling
+			// 10–12: Immediately adjacent sibling — native controls
 			"//label[normalize-space()=" + e + "]/following-sibling::input[1]",
 			"//label[normalize-space()=" + e + "]/following-sibling::textarea[1]",
 			"//label[normalize-space()=" + e + "]/following-sibling::select[1]",
-			// 13–15: Broader following axis (label and field not siblings)
+			// 13–15: Broader following axis — native controls
 			"//label[normalize-space()=" + e + "]/following::input[1]",
 			"//label[normalize-space()=" + e + "]/following::textarea[1]",
 			"//label[normalize-space()=" + e + "]/following::select[1]",
-			// 16: Placeholder attribute fallback
+			// 16: Placeholder text fallback
 			"//input[@placeholder=" + e + "]",
+			// 17–19: Custom dropdown widgets — for/id and aria-label
+			"//*[@role='combobox'][@id = //label[normalize-space()=" + e + "]/@for]",
+			"//*[@role='combobox'][@aria-label=" + e + "]",
+			"//*[@role='listbox'][@aria-label=" + e + "]",
+			// 20–22: Label wraps or is sibling/following of a combobox widget
+			"//label[normalize-space()=" + e + "]//*[@role='combobox']",
+			"//label[normalize-space()=" + e + "]/following-sibling::*[@role='combobox'][1]",
+			"//label[normalize-space()=" + e + "]/following::*[@role='combobox'][1]",
+			// 23: aria-labelledby — element whose id is referenced by the label's for attribute
+			"//*[@aria-labelledby = //label[normalize-space()=" + e + "]/@for][@role='combobox']",
 		};
 		for (String xpath : strategies) {
 			if (elementExists(xpath)) {
@@ -1317,16 +1327,32 @@ public class BasePage {
 
 	/**
 	 * Detects the {@link FormFieldType} of the element at the given locator by
-	 * inspecting its HTML tag name and {@code type} attribute.
+	 * inspecting its tag name, {@code type} attribute, and ARIA role.
+	 *
+	 * <ul>
+	 *   <li>Native {@code <select>}            → DROPDOWN (Selenium Select)</li>
+	 *   <li>Custom {@code role="combobox"}      → TYPEANDSELECT (type-ahead)</li>
+	 *   <li>{@code <textarea>}                  → TEXTAREA</li>
+	 *   <li>{@code input[type=checkbox]}         → CHECKBOX</li>
+	 *   <li>{@code input[type=radio]}            → RADIO</li>
+	 *   <li>Anything else                        → TEXTBOX</li>
+	 * </ul>
 	 */
 	private FormFieldType detectFieldType(String locator) {
 		WebElement element = waitForSelector(locator);
-		String tag = element.getTagName().toLowerCase();
-		if ("select".equals(tag))   return FormFieldType.DROPDOWN;
-		if ("textarea".equals(tag)) return FormFieldType.TEXTAREA;
+		String tag  = element.getTagName().toLowerCase();
+		String role = element.getDomAttribute("role");
+
+		if ("select".equals(tag))                return FormFieldType.DROPDOWN;
+		if ("combobox".equals(role))             return FormFieldType.TYPEANDSELECT;
+		if ("listbox".equals(role))              return FormFieldType.TYPEANDSELECT;
+		if ("textarea".equals(tag))              return FormFieldType.TEXTAREA;
 		String type = element.getDomProperty("type");
-		if ("checkbox".equals(type)) return FormFieldType.CHECKBOX;
-		if ("radio".equals(type))    return FormFieldType.RADIO;
+		if ("checkbox".equals(type))             return FormFieldType.CHECKBOX;
+		if ("radio".equals(type))                return FormFieldType.RADIO;
+		// input with aria-haspopup is a searchable custom dropdown
+		String hasPopup = element.getDomAttribute("aria-haspopup");
+		if (hasPopup != null && !hasPopup.equals("false")) return FormFieldType.TYPEANDSELECT;
 		return FormFieldType.TEXTBOX;
 	}
 
@@ -1335,12 +1361,12 @@ public class BasePage {
 	 * and interacts with it using the appropriate BasePage method.
 	 *
 	 * <ul>
-	 *   <li>Text / textarea → {@link #enterTextInField}</li>
-	 *   <li>Dropdown (select) → {@link #selectDropdownOptionByText}</li>
-	 *   <li>Checkbox → {@link #setCheckboxCheckedState}; value must be one of
-	 *       {@code check / true / yes / 1} (checked) or
-	 *       {@code uncheck / false / no / 0} (unchecked)</li>
-	 *   <li>Radio button → {@link #selectRadioButton} (value ignored beyond being non-empty)</li>
+	 *   <li>Text / textarea           → {@link #enterTextInField}</li>
+	 *   <li>Native dropdown (select)  → {@link #selectDropdownOptionByText}</li>
+	 *   <li>Custom dropdown (combobox)→ {@link #typeAndSelectOption} (types value, picks from list)</li>
+	 *   <li>Checkbox                  → {@link #setCheckboxCheckedState};
+	 *       value must be {@code check/true/yes/1} or {@code uncheck/false/no/0}</li>
+	 *   <li>Radio button              → {@link #selectRadioButton}</li>
 	 * </ul>
 	 *
 	 * @throws RuntimeException if no field is found for the label, or if a
@@ -1364,9 +1390,10 @@ public class BasePage {
 				}
 				setCheckboxCheckedState(locator, shouldCheck);
 			}
-			case RADIO    -> selectRadioButton(locator);
-			case DROPDOWN -> selectDropdownOptionByText(locator, value);
-			default       -> enterTextInField(locator, value);
+			case RADIO         -> selectRadioButton(locator);
+			case DROPDOWN      -> selectDropdownOptionByText(locator, value);
+			case TYPEANDSELECT -> typeAndSelectOption(locator, value);
+			default            -> enterTextInField(locator, value);
 		}
 		LOGGER.info("Filled '{}' ({}) → '{}'", labelText, type, value);
 	}
