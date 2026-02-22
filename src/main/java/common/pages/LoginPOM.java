@@ -9,20 +9,20 @@ import utils.jks.JKSReader;
 
 public class LoginPOM extends BasePage {
 
-    public final String usernameField = "//input[@placeholder='Username']";  // CSS Selector
-    public final String passwordField = "//input[@placeholder='Password']";  // CSS Selector
-    public final String loginButton = "//button[contains(@class,'loginButton')]"; // Button selector
-    public final String errorMessage = "//div[@id='error']"; // Error message selector
-    public final String homepageTitle = "//*[@id='titleView!1Title']"; // Home Page Header
+    public final String usernameField = "//input[@placeholder='Username']";
+    public final String passwordField = "//input[@placeholder='Password']";
+    public final String loginButton = "//button[contains(@class,'loginButton')]";
+    public final String errorMessage = "//div[@id='error']";
+    public final String homepageTitle = "//*[@id='titleView!1Title']";
 
     public String optUserProfile="//*[@class='comm-user-profile-menu']";
     public String optLogOut = "//span[@title='Log Out']/ancestor::a";
-    
+
     // Outlook buttons
     public final String outlookUserName = "";
     public final String outlookPassword = "";
     public final String outlookLoginButton = "";
-    
+
     // site fields
     public final String siteUserName = "//input[@id='username']";
     public final String sitePassword = "//input[@id='password']";
@@ -43,43 +43,48 @@ public class LoginPOM extends BasePage {
     public void clickLoginButton() {
         clickElementBySelector(loginButton);
     }
-    
+
+    /**
+     * Parses a "user,password" secret string from the JKS into a two-element array.
+     * Throws a descriptive exception if the format is wrong.
+     */
+    private String[] parseCredentials(String alias) {
+        JKSReader reader = new JKSReader();
+        String secret = reader.getSecret(alias);
+        String[] parts = secret.split(",", 2);
+        if (parts.length < 2 || parts[0].isBlank() || parts[1].isBlank()) {
+            throw new RuntimeException(
+                "JKS secret for alias '" + alias + "' must be in 'username,password' format");
+        }
+        return parts;
+    }
+
     public void loginAsUser(String userType) {
     	closeAllTabs();
-    	
-    	JKSReader reader = new JKSReader();
-    	String[] creds = reader.getSecret(userType).split(",");
-    	String username = creds[0];
-    	String password = creds[1];
-    	enterTextInField(usernameField, username.trim());
-    	enterTextInField(passwordField, password.trim());
+    	String[] creds = parseCredentials(userType);
+    	enterTextInField(usernameField, creds[0].trim());
+    	enterTextInField(passwordField, creds[1].trim());
     	clickLoginButton();
     }
-    
 
-	
 	private void closeAllTabs() {
-		String HomeTab = driver.getWindowHandle();
+		String homeTab = driver.getWindowHandle();
 		Set<String> allTabs = driver.getWindowHandles();
 		for (String tab : allTabs) {
-			if (!tab.equals(HomeTab)) {
+			if (!tab.equals(homeTab)) {
 				driver.switchTo().window(tab);
 				driver.close();
 			}
 		}
-		driver.switchTo().window(HomeTab);
+		driver.switchTo().window(homeTab);
 	}
 
 	public void LoginToOutlook(String userType) {
 		closeAllTabs();
-    	JKSReader reader = new JKSReader();
-		String[] creds = reader.getSecret(userType).split(",");
-		String username = creds[0];
-		String password = creds[1];
-		enterTextInField(outlookUserName, username.trim());
-		enterTextInField(outlookPassword, password.trim());
+		String[] creds = parseCredentials(userType);
+		enterTextInField(outlookUserName, creds[0].trim());
+		enterTextInField(outlookPassword, creds[1].trim());
 		clickElementBySelector(outlookLoginButton);
-		
 	}
 
 	public void logOut() throws Exception {
@@ -88,21 +93,14 @@ public class LoginPOM extends BasePage {
 	}
 
 	public void loginToSite(String user) throws Exception {
-		String HomeTab = driver.getWindowHandle();
-		ContextManager.put("HomeTab", HomeTab);
-		
+		String homeTab = driver.getWindowHandle();
+		ContextManager.put("HomeTab", homeTab);
 		closeAllTabs();
-		
 		if (isElementVisible(siteUserName)) {
-	
-	    	JKSReader reader = new JKSReader();
-			String[] creds = reader.getSecret(user).split(",");
-			String username = creds[0];
-			String password = creds[1];
-			enterTextInField(siteUserName, username.trim());
-			enterTextInField(sitePassword, password.trim());
+			String[] creds = parseCredentials(user);
+			enterTextInField(siteUserName, creds[0].trim());
+			enterTextInField(sitePassword, creds[1].trim());
 			clickElementBySelector(siteLoginButton);
 		}
 	}
 }
-

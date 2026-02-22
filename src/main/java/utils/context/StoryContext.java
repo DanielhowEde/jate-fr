@@ -17,8 +17,8 @@ public class StoryContext {
     }
 
     public static void clear() {
-        storyData.get().clear();
-        storyMode.set(false);
+        storyData.remove();
+        storyMode.remove();
     }
 
     public static void enableStoryMode() {

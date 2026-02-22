@@ -31,6 +31,7 @@ import java.io.File;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class BasePage {
     protected WebDriver driver;
@@ -39,7 +40,7 @@ public class BasePage {
     private static final long POLLING_INTERVAL_MS = 500;
     private String originalTab;
     private WebElement currentModal = null;
-    private static int screenshotCounter;
+    private static final AtomicInteger screenshotCounter = new AtomicInteger(0);
     
     protected <T> T waitFor(ExpectedCondition<T> condition) {
         try {
@@ -77,17 +78,17 @@ public class BasePage {
     	return currentModal != null;
     }
     
-    public static void resetScreeshotCouner() {
-    	screenshotCounter = 0;
+    public static void resetScreenshotCounter() {
+    	screenshotCounter.set(0);
     }
-    
-    public static int getNextScreeshotNumber() {
-    	return ++screenshotCounter;
+
+    public static int getNextScreenshotNumber() {
+    	return screenshotCounter.incrementAndGet();
     }
-    
-    public void clearModelCurrent() {
+
+    public void clearModalCurrent() {
     	currentModal= null;
-    	Logger.info("Modal Context cleared");
+    	LOGGER.info("Modal Context cleared");
     }
 
     private By getSelector(String locator) {
@@ -493,7 +494,7 @@ public class BasePage {
 
     public String captureScreenshot(String screenshotName) {
         try {
-        	int number = getNextScreeshotNumber();
+        	int number = getNextScreenshotNumber();
         	
             File srcFile = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
 
@@ -1253,9 +1254,9 @@ public class BasePage {
 	}
 	
 	public void highlightElement(String locator) {
-		WebElement element = driver.findElement(By.xpath("locator"));
+		WebElement element = driver.findElement(By.xpath(locator));
 		JavascriptExecutor js = (JavascriptExecutor) driver;
-		js.executeScript("arguments[0].style.boarder='3px solid red'", element);
+		js.executeScript("arguments[0].style.border='3px solid red'", element);
 	}
 }
 

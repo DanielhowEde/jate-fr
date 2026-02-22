@@ -68,10 +68,18 @@ return om.writerWithDefaultPrettyPrinter().writeValueAsString(node);
 }
 
 
+private static final java.util.Set<String> SENSITIVE_HEADERS = java.util.Set.of(
+    "authorization", "x-api-key", "x-auth-token", "cookie"
+);
+
+private static String redactValue(String key, String value) {
+    return SENSITIVE_HEADERS.contains(key.toLowerCase()) ? "[REDACTED]" : value;
+}
+
 private static String headersToString(Map<String,String> headers) {
 if (headers == null || headers.isEmpty()) return "";
 StringBuilder sb = new StringBuilder();
-headers.forEach((k, v) -> sb.append(k).append(": ").append(v).append("\n"));
+headers.forEach((k, v) -> sb.append(k).append(": ").append(redactValue(k, v)).append("\n"));
 return sb.toString();
 }
 
@@ -86,7 +94,7 @@ return sb.toString();
 private static String toCurl(String method, String path, Map<String,String> headers, String body) {
 StringBuilder sb = new StringBuilder("curl -i -X ").append(method).append(" \"")
 .append(path).append("\"");
-if (headers != null) headers.forEach((k,v) -> sb.append(" -H ").append(quote(k + ": " + v)));
+if (headers != null) headers.forEach((k,v) -> sb.append(" -H ").append(quote(k + ": " + redactValue(k, v))));
 if (body != null && !body.isBlank()) sb.append(" --data ").append(quote(body));
 return sb.toString();
 }

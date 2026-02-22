@@ -3,6 +3,7 @@ package utils.jks;
 import utils.secrets.SecretManagerUtil;
 
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.Base64;
 
@@ -28,7 +29,7 @@ public class JKSReader {
             KeyStore.ProtectionParameter protParam = new KeyStore.PasswordProtection(jksPassword.toCharArray());
             KeyStore.SecretKeyEntry entry = (KeyStore.SecretKeyEntry) keyStore.getEntry(alias, protParam);
             SecretKey secretKey = entry.getSecretKey();
-            return new String(secretKey.getEncoded());
+            return new String(secretKey.getEncoded(), StandardCharsets.UTF_8);
         } catch (Exception e) {
             throw new RuntimeException("❌ Failed to retrieve secret from JKS: " + alias, e);
         }

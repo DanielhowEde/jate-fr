@@ -25,20 +25,10 @@ public class ExtentManager {
             extent = new ExtentReports();
             extent.attachReporter(sparkReporter);
             extent.setSystemInfo("Framework", "Selenium-JUnit");
-            extent.setSystemInfo("Tester", System.getProperty("user.name"));
         }
         return extent;
     }
     
-    public static ExtentReports getExtentReports() {
-        if (extent == null) {
-            ExtentSparkReporter sparkReporter = new ExtentSparkReporter("target/story-extent-report.html");
-            extent = new ExtentReports();
-            extent.attachReporter(sparkReporter);
-        }
-        return extent;
-    }
-
     public static void startTest(String testName) {
         test = getInstance().createTest(testName);
     }

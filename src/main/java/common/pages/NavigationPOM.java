@@ -2,8 +2,8 @@ package common.pages;
 
 import core.BasePage;
 
-import org.jcodec.common.logging.Logger;
 import org.openqa.selenium.WebDriver;
+import static core.TestLogger.LOGGER;
 
 public class NavigationPOM extends BasePage {
 
@@ -11,7 +11,7 @@ public class NavigationPOM extends BasePage {
 	public static String btnOpenCases = "//a[text()='Open Cases']";
 	public static String btnClosedCases = "//a[text()='Closed Cases']";
 	public static String btnChangeRequests= "//a[text()='Change Requests']";
-	public static String btnKeyPerformaceInd = "//a[text()='Key Performance Indicators']";
+	public static String btnKeyPerformanceInd = "//a[text()='Key Performance Indicators']";
 	public static String btnSearch = "//button[@title='Expand search']";
 	public static String lnkShowMore = "//a[@id='%s' and text()='Show More']";
 	public static String lnkLocator = "//*[text()='%s']";
@@ -19,15 +19,7 @@ public class NavigationPOM extends BasePage {
 	
 	public NavigationPOM(WebDriver driver) {
 		super(driver);
-		// TODO Auto-generated constructor stub
 	}
-
-/*	public void NavigateToTriage() {
-		try {
-			wait for 
-		}
-		if ()
-	}*/
 
 	public void navigateTo(String link) {
 		
@@ -49,12 +41,12 @@ public class NavigationPOM extends BasePage {
 				break;
 				
 			case "key performance indicators":
-				clickElementBySelector(btnKeyPerformaceInd);
+				clickElementBySelector(btnKeyPerformanceInd);
 				
 				break;
 			default:
 				System.out.println("Unknown Function: "+ link);
-				break;//click the show more group node and click on the element
+				break;
 			}
 			
 		captureAndAttachScreenshot("Navigated to " + link);
@@ -74,7 +66,6 @@ public class NavigationPOM extends BasePage {
 	}
 
 	public void waitFor(int thisWait) throws Exception {
-		// TODO Auto-generated method stub
 		sleepFor(thisWait);
 	}
 	

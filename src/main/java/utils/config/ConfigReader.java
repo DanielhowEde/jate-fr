@@ -1,22 +1,21 @@
 package utils.config;
 
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 
 public class ConfigReader {
-    private static Properties properties;
+    private static final Properties properties;
 
-    // Load config file only once (Singleton Pattern)
     static {
-        try {
-            properties = new Properties();
-            String configFilePath = "src/test/resources/config.properties";
-            FileInputStream fis = new FileInputStream(configFilePath);
-            properties.load(fis);
-            fis.close();
+        properties = new Properties();
+        try (InputStream is = ConfigReader.class.getClassLoader().getResourceAsStream("config.properties")) {
+            if (is == null) {
+                throw new RuntimeException("config.properties not found on classpath");
+            }
+            properties.load(is);
         } catch (IOException e) {
-            throw new RuntimeException("❌ Failed to load config.properties file", e);
+            throw new RuntimeException("Failed to load config.properties", e);
         }
     }
 

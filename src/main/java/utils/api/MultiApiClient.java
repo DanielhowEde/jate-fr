@@ -3,6 +3,7 @@ package utils.api;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
+import utils.config.ConfigReader;
 
 import java.util.Map;
 
@@ -18,7 +19,11 @@ public class MultiApiClient {
 	}
 
 	private RequestSpecification base() {
-		var req = RestAssured.given().relaxedHTTPSValidation();
+		var req = RestAssured.given();
+		// Only disable TLS validation when explicitly configured (e.g. self-signed certs in dev/test)
+		if (ConfigReader.getBooleanProperty("api.relaxed.https", false)) {
+			req = req.relaxedHTTPSValidation();
+		}
 		if (defaultHeaders != null)
 			defaultHeaders.forEach(req::header);
 		if (auth != null)

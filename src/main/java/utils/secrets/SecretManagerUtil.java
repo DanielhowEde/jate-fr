@@ -4,6 +4,7 @@ import io.github.cdimascio.dotenv.Dotenv;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueResponse;
+import static core.TestLogger.LOGGER;
 
 public class SecretManagerUtil {
 
@@ -20,17 +21,17 @@ public class SecretManagerUtil {
         // 1. Try system environment variable
         String envValue = System.getenv(envVarName);
         if (envValue != null && !envValue.isEmpty()) {
-            System.out.println("🔐 Loaded secret from environment variable: " + envVarName);
+            LOGGER.debug("Loaded secret from environment variable: [{}]", envVarName);
             return envValue;
         }
 
         // 2. Try .env file
         String dotenvValue = dotenv.get(envVarName);
         if (dotenvValue != null && !dotenvValue.isEmpty()) {
-            System.out.println("🔐 Loaded secret from .env: " + envVarName);
+            LOGGER.debug("Loaded secret from .env file: [{}]", envVarName);
             return dotenvValue;
         }
-    	
+
     	// 3. Try AWS Secrets Manager
         try {
             SecretsManagerClient client = SecretsManagerClient.create();
@@ -41,14 +42,14 @@ public class SecretManagerUtil {
 
             String secretString = response.secretString();
             if (secretString != null && !secretString.isEmpty()) {
-                System.out.println("🔐 Loaded secret from AWS Secrets Manager: " + secretName);
+                LOGGER.debug("Loaded secret from AWS Secrets Manager.");
                 return secretString;
             }
         } catch (Exception e) {
-            System.out.println("⚠️ AWS Secrets Manager not used or failed for: " + secretName);
+            LOGGER.warn("AWS Secrets Manager unavailable for secret lookup (env var name: [{}])", envVarName);
         }
 
-        throw new RuntimeException("❌ No secret found for " + secretName + " and no fallback environment variable: " + envVarName);
+        throw new RuntimeException("❌ No secret found for env var [" + envVarName + "]");
     }
 
 

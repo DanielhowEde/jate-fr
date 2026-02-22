@@ -112,7 +112,7 @@ public class Hooks {
                 extractSpreadsheetName(scenario);
             }
         }
-        BasePage.resetScreeshotCouner();
+        BasePage.resetScreenshotCounter();
         logger.info("✅ WebDriver Initialized");
     }
 
@@ -168,12 +168,12 @@ public class Hooks {
             clearRetry(scenarioKey);
         } else {
 
-            // Get the underlying error (Cucumber 7+ usually supports this)
+            // Get the underlying error stored in context by BasePage
             Throwable error = null;
             try {
-            	Throwable lastError = (Throwable) scenarioContext.get("LAST_EXCEPTION");
+                error = (Throwable) scenarioContext.get("LAST_EXCEPTION");
             } catch (Throwable ignored) {
-                // If your Cucumber version doesn't support getError(), error stays null
+                // error stays null if context doesn't contain the exception
             }
 
             boolean timeoutFailure = scenario.isFailed() && isTimeoutFailure(error);

@@ -1,0 +1,55 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Example YAML Story File
+#
+# This file demonstrates the three data-selection modes supported by
+# YamlStoryRunner. Replace the feature paths, sheet names, and column
+# references with values that match your actual test data.
+#
+# Run via:
+#   StoryRunResult result = YamlStoryRunner.run("stories/example_story.yaml");
+# ─────────────────────────────────────────────────────────────────────────────
+
+story: User Onboarding Flow
+description: End-to-end user registration, login, and profile verification
+
+# Path to the Excel test-data workbook (relative to the project working directory)
+excel: testdata/onboarding_data.xlsx
+
+settings:
+  # Set to true to stop the story on the first failure
+  failFast: false
+
+run:
+
+  # ── Item 1 ─────────────────────────────────────────────────────────────────
+  # Run the entire Login feature using row 1 of the "Credentials" sheet.
+  # Each column header becomes a StoryContext key:
+  #   ContextManager.get("username")  → value from the "username" column
+  #   ContextManager.get("password")  → value from the "password" column
+  - feature: features/Login/login.feature
+    data:
+      sheet: Credentials
+      row: 1                    # 1-based; row 1 = first data row after the header
+
+  # ── Item 2 ─────────────────────────────────────────────────────────────────
+  # Run only the named scenario "Create a standard user" inside the feature.
+  # The row is located by matching column "testCaseId" to the value "TC-101".
+  - feature: features/Users/create_user.feature
+    scenario: "Create a standard user"
+    data:
+      sheet: Users
+      key:
+        column: testCaseId
+        value: "TC-101"
+
+  # ── Item 3 ─────────────────────────────────────────────────────────────────
+  # Inject ALL rows from the "Users" sheet as a List<Map<String,String>>
+  # accessible via:  ContextManager.get("rows")
+  - feature: features/Users/verify_users.feature
+    data:
+      sheet: Users
+      rows: all
+
+  # ── Item 4 ─────────────────────────────────────────────────────────────────
+  # No data block — the feature runs without any Excel injection.
+  - feature: features/Dashboard/dashboard_smoke.feature

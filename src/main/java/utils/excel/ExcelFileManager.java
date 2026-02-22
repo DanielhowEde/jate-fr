@@ -61,6 +61,12 @@ public class ExcelFileManager {
                 allRows.add(dataRow);
             }
 
+            // Initialize row iterator starting after the header row
+            this.rowIterator = sheet.rowIterator();
+            if (this.rowIterator.hasNext()) {
+                this.rowIterator.next(); // skip header row
+            }
+
         } catch (IOException e) {
             throw new RuntimeException("❌ Failed to load Excel file: " + filePath, e);
         }

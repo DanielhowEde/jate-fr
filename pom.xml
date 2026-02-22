@@ -36,26 +36,6 @@
 		    <version>2.16.1</version>
 		</dependency>
 		
-		<!-- SLF4J API -->
-		<dependency>
-		    <groupId>org.slf4j</groupId>
-		    <artifactId>slf4j-api</artifactId>
-		    <version>2.0.9</version>
-		</dependency>
-		
-		<!-- Logback Classic (Backend for SLF4J) -->
-		<dependency>
-		    <groupId>ch.qos.logback</groupId>
-		    <artifactId>logback-classic</artifactId>
-		    <version>1.4.11</version>
-		</dependency>
-				
-		<dependency>
-		    <groupId>org.apache.poi</groupId>
-		    <artifactId>poi-ooxml-full</artifactId>
-		    <version>5.2.3</version>
-		</dependency>
-		
 		<!-- https://mvnrepository.com/artifact/org.apache.poi/poi-ooxml -->
 		<dependency>
 		    <groupId>org.apache.poi</groupId>
@@ -217,14 +197,6 @@
 		</dependency>
 		
 
-		  <dependency>
-		    <groupId>org.junit.jupiter</groupId>
-		    <artifactId>junit-jupiter</artifactId>
-		    <version>5.9.3</version>
-		    <scope>compile</scope>
-		  </dependency>
-
-		
 		<!-- ✅ JUnit Platform Suite (For `Suite`, `IncludeEngines`, etc.) -->
 		<dependency>
 		    <groupId>org.junit.platform</groupId>
@@ -233,13 +205,6 @@
 		    <scope>compile</scope>
 		</dependency>
 
-	    <!-- Apache POI for .xlsx Excel files -->
-	    <dependency>
-	        <groupId>org.apache.poi</groupId>
-	        <artifactId>poi-ooxml</artifactId>
-	        <version>5.2.3</version>
-	    </dependency>
-	
 	    <!-- Logging to suppress warnings -->
 	    <dependency>
 	        <groupId>commons-logging</groupId>

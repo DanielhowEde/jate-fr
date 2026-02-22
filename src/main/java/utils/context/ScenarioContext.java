@@ -1,14 +1,14 @@
 package utils.context;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ScenarioContext {
-    private Map<String, Object> data;
+    private final Map<String, Object> data;
 
     public ScenarioContext() {
-        data = new HashMap<>();
+        data = new ConcurrentHashMap<>();
     }
 
     public void set(String key, Object value) {
