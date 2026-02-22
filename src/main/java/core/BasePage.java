@@ -22,6 +22,7 @@ import java.nio.file.StandardCopyOption;
 
 import utils.context.*;
 import utils.config.ConfigReader;
+import utils.form.FormFieldType;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -1257,6 +1258,117 @@ public class BasePage {
 		WebElement element = driver.findElement(By.xpath(locator));
 		JavascriptExecutor js = (JavascriptExecutor) driver;
 		js.executeScript("arguments[0].style.border='3px solid red'", element);
+	}
+
+	// ── Label-based form filling ─────────────────────────────────────────────
+
+	/**
+	 * Safely wraps a label string for use inside an XPath string predicate,
+	 * handling labels that contain single quotes, double quotes, or both.
+	 */
+	private String xpathEscape(String text) {
+		if (!text.contains("'"))  return "'" + text + "'";
+		if (!text.contains("\"")) return "\"" + text + "\"";
+		// Both quote types present — build an XPath concat() expression
+		return "concat('" + text.replace("'", "', \"'\", '") + "')";
+	}
+
+	/**
+	 * Finds the XPath locator for the input, textarea, or select element
+	 * associated with the given visible label text. Tries 16 DOM strategies
+	 * in priority order and returns the first match.
+	 *
+	 * @throws RuntimeException if no matching field is found for the label
+	 */
+	private String findLocatorByLabel(String labelText) {
+		String e = xpathEscape(labelText);
+		String[] strategies = {
+			// 1–3: Classic HTML for/id linkage
+			"//input[@id = //label[normalize-space()=" + e + "]/@for]",
+			"//textarea[@id = //label[normalize-space()=" + e + "]/@for]",
+			"//select[@id = //label[normalize-space()=" + e + "]/@for]",
+			// 4–6: ARIA label directly on the control
+			"//input[@aria-label=" + e + "]",
+			"//textarea[@aria-label=" + e + "]",
+			"//select[@aria-label=" + e + "]",
+			// 7–9: Label element wraps the control
+			"//label[normalize-space()=" + e + "]//input",
+			"//label[normalize-space()=" + e + "]//textarea",
+			"//label[normalize-space()=" + e + "]//select",
+			// 10–12: Immediately adjacent sibling
+			"//label[normalize-space()=" + e + "]/following-sibling::input[1]",
+			"//label[normalize-space()=" + e + "]/following-sibling::textarea[1]",
+			"//label[normalize-space()=" + e + "]/following-sibling::select[1]",
+			// 13–15: Broader following axis (label and field not siblings)
+			"//label[normalize-space()=" + e + "]/following::input[1]",
+			"//label[normalize-space()=" + e + "]/following::textarea[1]",
+			"//label[normalize-space()=" + e + "]/following::select[1]",
+			// 16: Placeholder attribute fallback
+			"//input[@placeholder=" + e + "]",
+		};
+		for (String xpath : strategies) {
+			if (elementExists(xpath)) {
+				LOGGER.debug("Found field for label '{}' via: {}", labelText, xpath);
+				return xpath;
+			}
+		}
+		throw new RuntimeException("No form field found on page for label: '" + labelText + "'");
+	}
+
+	/**
+	 * Detects the {@link FormFieldType} of the element at the given locator by
+	 * inspecting its HTML tag name and {@code type} attribute.
+	 */
+	private FormFieldType detectFieldType(String locator) {
+		WebElement element = waitForSelector(locator);
+		String tag = element.getTagName().toLowerCase();
+		if ("select".equals(tag))   return FormFieldType.DROPDOWN;
+		if ("textarea".equals(tag)) return FormFieldType.TEXTAREA;
+		String type = element.getDomProperty("type");
+		if ("checkbox".equals(type)) return FormFieldType.CHECKBOX;
+		if ("radio".equals(type))    return FormFieldType.RADIO;
+		return FormFieldType.TEXTBOX;
+	}
+
+	/**
+	 * Finds the form field associated with {@code labelText}, detects its type,
+	 * and interacts with it using the appropriate BasePage method.
+	 *
+	 * <ul>
+	 *   <li>Text / textarea → {@link #enterTextInField}</li>
+	 *   <li>Dropdown (select) → {@link #selectDropdownOptionByText}</li>
+	 *   <li>Checkbox → {@link #setCheckboxCheckedState}; value must be one of
+	 *       {@code check / true / yes / 1} (checked) or
+	 *       {@code uncheck / false / no / 0} (unchecked)</li>
+	 *   <li>Radio button → {@link #selectRadioButton} (value ignored beyond being non-empty)</li>
+	 * </ul>
+	 *
+	 * @throws RuntimeException if no field is found for the label, or if a
+	 *                          checkbox receives an unrecognised value
+	 */
+	public void fillFieldByLabel(String labelText, String value) {
+		String locator = findLocatorByLabel(labelText);
+		FormFieldType type = detectFieldType(locator);
+		String v = value.trim().toLowerCase();
+
+		switch (type) {
+			case CHECKBOX -> {
+				boolean shouldCheck;
+				if (v.equals("check") || v.equals("true") || v.equals("yes") || v.equals("1")) {
+					shouldCheck = true;
+				} else if (v.equals("uncheck") || v.equals("false") || v.equals("no") || v.equals("0")) {
+					shouldCheck = false;
+				} else {
+					throw new RuntimeException(
+						"Checkbox '" + labelText + "' requires check/uncheck/true/false/yes/no/1/0, got: '" + value + "'");
+				}
+				setCheckboxCheckedState(locator, shouldCheck);
+			}
+			case RADIO    -> selectRadioButton(locator);
+			case DROPDOWN -> selectDropdownOptionByText(locator, value);
+			default       -> enterTextInField(locator, value);
+		}
+		LOGGER.info("Filled '{}' ({}) → '{}'", labelText, type, value);
 	}
 }
 
