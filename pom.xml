@@ -269,6 +269,14 @@
 			<artifactId>jackson-dataformat-yaml</artifactId>
 			<version>2.17.2</version>
 		</dependency>
+		<!-- Accessibility scanning: Pa11y over CDP against the Chrome Selenium is already driving.
+		     Local library at h:/repos/pa11yRunner  (mvn install, or copied into ~/.m2).
+		     Its Node scanner must have had `npm ci` run in pa11yRunner/scanner. -->
+		<dependency>
+			<groupId>com.automation</groupId>
+			<artifactId>pa11y-runner</artifactId>
+			<version>1.0.0</version>
+		</dependency>
 		
 	</dependencies>
 
